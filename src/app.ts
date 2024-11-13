@@ -68,4 +68,4 @@ process.on('uncaughtException', (error) => {
 });
 
 // 서버 시작
-await startServer();
+startServer();

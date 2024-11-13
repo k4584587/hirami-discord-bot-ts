@@ -1,8 +1,8 @@
 import { Client, Routes, REST } from 'discord.js';
 import { balance } from './balance';
 import { casino } from './casino';
-
-export const commands = [balance, casino];
+import { chat } from './chatgpt';
+export const commands = [balance, casino, chat];
 
 export const registerCommands = async (client: Client) => {
     console.log('슬래시 명령어 등록 중...');
