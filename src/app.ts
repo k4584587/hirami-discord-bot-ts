@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from 'express';
-import { Client, GatewayIntentBits, Events, Interaction } from 'discord.js';
+import { Client, GatewayIntentBits, Events } from 'discord.js';
 import { registerEvents } from './events';
 import { interactionCreate } from './events/interactionCreate';
 import dotenv from 'dotenv';
@@ -12,7 +12,7 @@ const port = 3000;
 
 app.use(express.json());
 
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.send('Hello, TypeScript Express!');
 });
 
@@ -25,11 +25,6 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildIntegrations,
   ]
-});
-
-// Discord 봇 이벤트 처리
-client.once(Events.ClientReady, async () => {
-  console.log(`Logged in as ${client.user?.tag}!`);
 });
 
 // 명령어 처리를 위한 interactionCreate 이벤트 등록
@@ -73,4 +68,4 @@ process.on('uncaughtException', (error) => {
 });
 
 // 서버 시작
-startServer();
+await startServer();
