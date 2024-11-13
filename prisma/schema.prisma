@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model NbAssistants {
+  id          BigInt    @id @default(autoincrement())
+  assistantId String?   @map("ASSISTANT_ID") @db.VarChar(255)
+  createdAt   DateTime? @default(now()) @map("CREATED_AT") @db.Timestamp()
+  description String?   @map("DESCRIPTION") @db.VarChar(255)
+  name        String?   @map("NAME") @db.VarChar(255)
+
+  @@map("nb_assistants")
+}
+
+model NbCasinoRecords {
+  id             BigInt        @id @default(autoincrement())
+  amount         BigInt        @map("AMOUNT")
+  betAmount      BigInt        @map("BET_AMOUNT")
+  result         String        @map("RESULT") @db.VarChar(255)
+  timestamp      DateTime      @map("TIMESTAMP") @db.DateTime(6)
+  userId         String        @map("USER_ID") @db.VarChar(255)
+  winProbability Int?          @map("WIN_PROBABILITY")
+  user           NbCasinoUsers @relation(fields: [userId], references: [id])
+
+  @@map("nb_casino_records")
+}
+
+model NbCasinoServers {
+  id        String          @id @map("ID") @db.VarChar(255)
+  name      String?         @map("NAME") @db.VarChar(255)
+  timestamp DateTime?       @map("TIMESTAMP") @db.DateTime(6)
+  users     NbCasinoUsers[]
+
+  @@map("nb_casino_servers")
+}
+
+model NbCasinoUsers {
+  id                    String            @id @map("ID") @db.VarChar(255)
+  balance               BigInt?           @map("BALANCE")
+  lastReceivedMoneyTime DateTime?         @map("LAST_RECEIVED_MONEY_TIME") @db.DateTime(6)
+  username              String?           @map("USERNAME") @db.VarChar(255)
+  serverId              String?           @map("SERVER_ID") @db.VarChar(255)
+  totalBets             BigInt?           @map("TOTAL_BETS")
+  totalLosses           BigInt?           @map("TOTAL_LOSSES")
+  totalWins             BigInt?           @map("TOTAL_WINS")
+  server                NbCasinoServers?  @relation(fields: [serverId], references: [id])
+  casinoRecords         NbCasinoRecords[]
+
+  @@map("nb_casino_users")
+}
+
+model NbChannels {
+  id          BigInt  @id @default(autoincrement())
+  channelId   String? @map("CHANNEL_ID") @db.VarChar(255)
+  channelName String? @map("CHANNEL_NAME") @db.VarChar(255)
+
+  @@map("nb_channels")
+}
+
+model NbChatMessages {
+  id             BigInt      @id @default(autoincrement())
+  content        String      @map("CONTENT") @db.LongText
+  conversationId String?     @map("CONVERSATION_ID") @db.VarChar(255)
+  isBotMessage   Boolean?    @map("IS_BOT_MESSAGE")
+  isDeleted      Boolean     @map("IS_DELETED")
+  threadId       String?     @map("THREAD_ID") @db.VarChar(255)
+  timestamp      DateTime?   @map("TIMESTAMP") @db.DateTime(6)
+  userId         BigInt      @map("USER_ID")
+  user           NbChatUsers @relation(fields: [userId], references: [id])
+
+  @@map("nb_chat_messages")
+}
+
+model NbChatUsers {
+  id                 BigInt           @id @default(autoincrement())
+  contextEnabled     Boolean?         @map("CONTEXT_ENABLED")
+  discordId          String           @unique @map("DISCORD_ID") @db.VarChar(255)
+  lastConversationId String?          @map("LAST_CONVERSATION_ID") @db.VarChar(255)
+  lastInteraction    DateTime?        @map("LAST_INTERACTION") @db.DateTime(6)
+  timestamp          DateTime?        @map("TIMESTAMP") @db.DateTime(6)
+  username           String?          @map("USERNAME") @db.VarChar(255)
+  messages           NbChatMessages[]
+
+  @@map("nb_chat_users")
+}
+
+model NbPosts {
+  id        BigInt    @id @default(autoincrement())
+  channelId String?   @map("CHANNEL_ID") @db.VarChar(255)
+  isSent    Boolean   @map("IS_SENT")
+  link      String?   @map("LINK") @db.VarChar(255)
+  postId    String?   @map("POST_ID") @db.VarChar(255)
+  timestamp DateTime? @map("TIMESTAMP") @db.DateTime(6)
+  title     String?   @map("TITLE") @db.VarChar(255)
+
+  @@map("nb_posts")
+}
