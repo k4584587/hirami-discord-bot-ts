@@ -28,7 +28,6 @@ export const chat: Command = {
                 interaction.user.id,
                 interaction.user.username,
                 message
-                // threadId를 제거합니다.
             );
 
             if (!reply) {

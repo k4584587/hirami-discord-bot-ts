@@ -92,7 +92,6 @@ export const generateGPTReply = async (
                 isDeleted: false,
                 timestamp: new Date(),
                 conversationId
-                // threadId 제거
             }
         }),
         // 봇 응답 저장
@@ -104,7 +103,6 @@ export const generateGPTReply = async (
                 isDeleted: false,
                 timestamp: new Date(),
                 conversationId
-                // threadId 제거
             }
         }),
         // 사용자 정보 업데이트
