@@ -6,7 +6,7 @@ export const interactionCreate = async (interaction: Interaction): Promise<void>
     // 슬래시 커맨드가 아닌 경우 무시
     if (!interaction.isChatInputCommand()) return;
 
-    console.log(`Received command: ${interaction.commandName}`); // 디버깅용
+    console.log(`Received command: ${interaction.commandName} | Command Call : ${interaction.user.displayName}`); // 디버깅용
 
     const command = commands.find(cmd => cmd.data.name === interaction.commandName);
 

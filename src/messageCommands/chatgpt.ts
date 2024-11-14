@@ -1,6 +1,9 @@
-import { Message, TextChannel, ThreadChannel, DMChannel, NewsChannel } from 'discord.js';
+import { Message, TextChannel, ThreadChannel, DMChannel, NewsChannel, AttachmentBuilder } from 'discord.js';
 import { MessageCommand } from "../commands/types/MessageCommand";
 import { generateGPTReply } from '../services/chatgptService';
+
+const CHAR_LIMIT = 2000;
+const FILE_THRESHOLD = 1000; // 1000자 이상이면 파일로 전송
 
 export const chatgptCommand: MessageCommand = {
     name: '!c',
@@ -14,7 +17,7 @@ export const chatgptCommand: MessageCommand = {
                 return;
             }
 
-            const replyMessage = await message.reply('처리 중...');
+            const replyMessage = await message.reply('작성중...');
 
             // GPT 응답 생성
             const reply = await generateGPTReply(message.author.id, message.author.username, content);
@@ -24,19 +27,32 @@ export const chatgptCommand: MessageCommand = {
                 return;
             }
 
-            const sendMessage = async (channel: TextChannel | ThreadChannel | DMChannel | NewsChannel, content: string) => {
-                try {
-                    await channel.send({ content });
-                } catch (error) {
-                    console.error('Failed to send message:', error);
-                    throw error;
-                }
-            };
+            // 응답이 FILE_THRESHOLD보다 길면 파일로 전송
+            if (reply.length > FILE_THRESHOLD) {
+                const buffer = Buffer.from(reply, 'utf-8');
+                const attachment = new AttachmentBuilder(buffer, {
+                    name: 'response.txt',
+                    description: 'ChatGPT Response'
+                });
 
-            // Discord 메시지 길이 제한(2000자) 처리
-            if (reply.length > 2000) {
+                await replyMessage.edit({
+                    content: `응답이 길어서 파일로 전송됩니다.`,
+                    files: [attachment]
+                });
+            }
+            // FILE_THRESHOLD보다 짧지만 Discord 메시지 길이 제한보다 길 경우
+            else if (reply.length > CHAR_LIMIT) {
                 const chunks = reply.match(/.{1,2000}/g) || [];
                 await replyMessage.edit({ content: chunks[0] });
+
+                const sendMessage = async (channel: TextChannel | ThreadChannel | DMChannel | NewsChannel, content: string) => {
+                    try {
+                        await channel.send({ content });
+                    } catch (error) {
+                        console.error('Failed to send message:', error);
+                        throw error;
+                    }
+                };
 
                 for (let i = 1; i < chunks.length; i++) {
                     const channel = message.channel;
@@ -44,7 +60,9 @@ export const chatgptCommand: MessageCommand = {
                         await sendMessage(channel as TextChannel | ThreadChannel | DMChannel | NewsChannel, chunks[i]);
                     }
                 }
-            } else {
+            }
+            // 일반적인 짧은 응답
+            else {
                 await replyMessage.edit({ content: reply });
             }
 

@@ -1,7 +1,10 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { Command } from './types/Command';
 import { generateGPTReply } from '../services/chatgptService';
+import { AttachmentBuilder } from 'discord.js';
 
+const CHAR_LIMIT = 2000;
+const FILE_THRESHOLD = 1000; // 1000자 이상이면 파일로 전송
 
 const commandData = new SlashCommandBuilder()
     .setName('c')
@@ -28,8 +31,20 @@ export const chat: Command = {
                 return;
             }
 
-            // Discord 메시지 길이 제한(2000자) 처리
-            if (reply.length > 2000) {
+            // 응답이 FILE_THRESHOLD보다 길면 파일로 전송
+            if (reply.length > FILE_THRESHOLD) {
+                const buffer = Buffer.from(reply, 'utf-8');
+                const attachment = new AttachmentBuilder(buffer, {
+                    name: 'response.txt',
+                    description: 'ChatGPT Response'
+                });
+
+                await interaction.editReply({
+                    content: `응답이 길어서 파일로 전송됩니다.`,
+                    files: [attachment]
+                });
+            } else if (reply.length > CHAR_LIMIT) {
+                // FILE_THRESHOLD보다 짧지만 Discord 메시지 길이 제한보다 길 경우
                 const chunks = reply.match(/.{1,2000}/g) || [];
                 await interaction.editReply({ content: chunks[0] });
 
@@ -37,6 +52,7 @@ export const chat: Command = {
                     await interaction.followUp({ content: chunks[i] });
                 }
             } else {
+                // 일반적인 짧은 응답
                 await interaction.editReply({ content: reply });
             }
 
