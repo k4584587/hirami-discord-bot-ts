@@ -24,7 +24,12 @@ export const chat: Command = {
             const message = interaction.options.getString('message', true);
 
             // GPT 응답 생성
-            const reply = await generateGPTReply(interaction.user.id, interaction.user.username, message);
+            const reply = await generateGPTReply(
+                interaction.user.id,
+                interaction.user.username,
+                message
+                // threadId를 제거합니다.
+            );
 
             if (!reply) {
                 await interaction.editReply({ content: "응답을 생성하지 못했습니다." });

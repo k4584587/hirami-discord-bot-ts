@@ -68,7 +68,6 @@ model NbChatMessages {
   conversationId String?     @map("CONVERSATION_ID") @db.VarChar(255)
   isBotMessage   Boolean?    @map("IS_BOT_MESSAGE")
   isDeleted      Boolean     @map("IS_DELETED")
-  threadId       String?     @map("THREAD_ID") @db.VarChar(255)
   timestamp      DateTime?   @map("TIMESTAMP") @db.DateTime(6)
   userId         BigInt      @map("USER_ID")
   user           NbChatUsers @relation(fields: [userId], references: [id])
