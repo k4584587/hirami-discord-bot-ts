@@ -23,7 +23,7 @@ export const deleteCommand: MessageCommand = {
                     }),
                 ]);
 
-                await message.reply('대화 내용이 삭제되었고, 대화 세션이 초기화되었습니다.');
+                await message.reply('대화 세션이 초기화되었습니다.');
             } else {
                 await message.reply('삭제할 대화 내용이 없습니다.');
             }

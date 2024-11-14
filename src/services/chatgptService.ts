@@ -58,7 +58,7 @@ export const generateGPTReply = async (
     const messages: ChatCompletionMessageParam[] = [
         {
             role: "system",
-            content: "You are a helpful assistant having a conversation in Korean. Previous messages provide context for the conversation."
+            content: process.env.OPENAI_SYSTEM_PROMPT || "You are a helpful assistant having a conversation in Korean. Previous messages provide context for the conversation."
         },
         ...previousMessages.reverse().map(msg => ({
             role: msg.isBotMessage ? "assistant" : "user",
@@ -72,7 +72,7 @@ export const generateGPTReply = async (
 
     // ChatGPT API 호출
     const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini',
         messages,
         max_tokens: 1000
     });
