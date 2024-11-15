@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "scripts": {
     "build": "tsc",
-    "start": "cross-env NODE_ENV=production node dist/app.js",
+    "start": "cross-env NODE_ENV=production node dist/src/app.js",
     "dev": "cross-env NODE_ENV=development nodemon src/app.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma"
   },
   "keywords": [],
   "author": "",
