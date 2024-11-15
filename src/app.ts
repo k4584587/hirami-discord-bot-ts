@@ -4,8 +4,6 @@ import { registerEvents } from './events';
 import { interactionCreate } from './events/interactionCreate';
 import dotenv from 'dotenv';
 
-import crawlerRoutes from "./routes/crawlerRoutes";
-
 dotenv.config();
 
 // Express 설정
@@ -13,9 +11,6 @@ const app: Express = express();
 const port = 3000;
 
 app.use(express.json());
-
-
-app.use('/api', crawlerRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
   res.send('Hello, TypeScript Express!');
