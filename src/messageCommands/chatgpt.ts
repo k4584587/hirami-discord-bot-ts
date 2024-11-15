@@ -27,7 +27,7 @@ export const chatgptCommand: MessageCommand = {
                 return;
             }
 
-            // 응답이 FILE_THRESHOLD보다 길면 파일로 전송
+            // 응답이 FILE_THRESHOLD 보다 길면 파일로 전송
             if (reply.length > FILE_THRESHOLD) {
                 const buffer = Buffer.from(reply, 'utf-8');
                 const attachment = new AttachmentBuilder(buffer, {
@@ -40,7 +40,7 @@ export const chatgptCommand: MessageCommand = {
                     files: [attachment]
                 });
             }
-            // FILE_THRESHOLD보다 짧지만 Discord 메시지 길이 제한보다 길 경우
+            // FILE_THRESHOLD 보다 짧지만 Discord 메시지 길이 제한보다 길 경우
             else if (reply.length > CHAR_LIMIT) {
                 const chunks = reply.match(/.{1,2000}/g) || [];
                 await replyMessage.edit({ content: chunks[0] });
