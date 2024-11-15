@@ -8,10 +8,10 @@ export async function getContent(req: Request, res: Response) {
 
     try {
         const content = await fetchContentUsingXPath(url, xpath);
+        console.log(content)
 
         // GPT 응답 생성
         const reply = await generateGPTReply(String(2), "api", " " + content + " ", assistantName, "json");
-        console.log(reply);
 
         // 'json' 형식일 때 JSON 객체로 응답
         try {

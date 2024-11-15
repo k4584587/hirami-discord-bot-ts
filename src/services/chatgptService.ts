@@ -28,6 +28,8 @@ const openai = new OpenAI({
 
 // 캐시를 위한 인메모리 저장소 (이름별로 assistantId를 저장)
 let cachedAssistantIds: { [name: string]: string } = {};
+// 어시스턴트 설정 캐시 추가
+let cachedAssistantSettings: { [assistantId: string]: any } = {};
 
 interface RunExtended extends Run {
     thread_id: string;
@@ -55,6 +57,26 @@ const getAssistantId = async (name: string): Promise<string> => {
     cachedAssistantIds[name] = assistant.assistantId;
     logger.info(`Cached assistantId for ${name}: ${assistant.assistantId}`);
     return assistant.assistantId;
+};
+
+// 어시스턴트 설정을 가져오는 함수 추가
+const getAssistantSettings = async (assistantId: string): Promise<any> => {
+    logger.info(`Fetching assistant settings for assistantId: ${assistantId}`);
+
+    if (cachedAssistantSettings[assistantId]) {
+        logger.info(`Found cached assistant settings for assistantId: ${assistantId}`);
+        return cachedAssistantSettings[assistantId];
+    }
+
+    try {
+        const assistantSettings = await openai.beta.assistants.retrieve(assistantId);
+        cachedAssistantSettings[assistantId] = assistantSettings;
+        logger.info(`Cached assistant settings for assistantId: ${assistantId}`);
+        return assistantSettings;
+    } catch (error) {
+        logger.error(`Error retrieving assistant settings for assistantId ${assistantId}:`, error);
+        throw new GPTReplyError('어시스턴트 설정을 가져오는 중 오류가 발생했습니다.');
+    }
 };
 
 // 최적화된 실행 상태 조회 함수
@@ -91,7 +113,6 @@ const waitForRunCompletion = async (
     logger.error('Run completion timed out');
     throw new GPTReplyError('실행(run) 완료 대기 시간 초과', undefined, threadId);
 };
-
 
 // 병렬 처리를 위한 데이터베이스 작업 함수
 const saveMessages = async (
@@ -171,19 +192,44 @@ export const generateGPTReply = async (
         ]);
         logger.info(`User upserted with id=${user.id}, assistantId=${assistantId}`);
 
-        // ThreadId 조회 최적화
-        logger.info('Fetching the latest threadId for the user');
-        const threadMessage = await prisma.nbChatMessages.findFirst({
-            where: {
-                userId: user.id,
-                isDeleted: false,
-            },
-            orderBy: { timestamp: 'desc' },
-            select: { threadId: true }
-        });
+        // 어시스턴트 설정 가져오기
+        const assistantSettings = await getAssistantSettings(assistantId);
+        logger.info(`Retrieved assistant settings: ${JSON.stringify(assistantSettings)}`);
 
-        let threadId = threadMessage?.threadId;
-        logger.info(`Retrieved threadId: ${threadId || 'None'}`);
+        // 어시스턴트의 지시사항을 초기 사용자 메시지로 포함
+        let initialUserMessage = assistantSettings.instructions || 'You are an assistant.';
+        if (responseType === 'json') {
+            initialUserMessage += ' Please provide the response in JSON format.';
+            logger.info('Appending JSON response instruction to initial user message');
+        }
+
+        const systemMessageAsUser = {
+            role: 'user',
+            content: initialUserMessage
+        };
+
+        let threadId: string | undefined;
+
+        if (responseType !== 'json') {
+            // ThreadId 조회 최적화 (JSON 응답이 아닐 때만 기존 스레드 사용)
+            logger.info('Fetching the latest threadId for the user');
+            const threadMessage = await prisma.nbChatMessages.findFirst({
+                where: {
+                    userId: user.id,
+                    isDeleted: false,
+                },
+                orderBy: { timestamp: 'desc' },
+                select: { threadId: true }
+            });
+
+            // Null 값을 undefined로 변환하여 할당
+            threadId = threadMessage?.threadId ?? undefined;
+            logger.info(`Retrieved threadId: ${threadId || 'None'}`);
+        } else {
+            // JSON 응답일 경우, 기존 스레드를 사용하지 않음
+            logger.info('JSON response requested. Ignoring existing threadId to clear memory.');
+            threadId = undefined;
+        }
 
         // response_format 설정
         const responseFormat =
@@ -197,17 +243,39 @@ export const generateGPTReply = async (
         }
 
         // 메시지 배열 구성
-        let messages = [{ role: 'user', content: message }];
+        let messages: { role: string, content: string }[] = [{ role: 'user', content: message }];
         if (responseType === 'json') {
-            const systemMessage = {
-                role: 'system',
-                content: '모든 응답을 JSON 형식으로 제공해 주세요.'
-            };
-            messages = [systemMessage, ...messages];
-            logger.info('Added system message for JSON response format');
+            // JSON 응답일 경우, 초기 사용자 메시지 포함
+            messages = [systemMessageAsUser, ...messages];
+            logger.info('Added initial user message for JSON response format');
+        } else {
+            // 텍스트 응답일 경우, 기존 대화 컨텍스트 유지
+            if (systemMessageAsUser.content !== 'You are an assistant.') {
+                // 기본 지시사항이 변경된 경우 초기 사용자 메시지 포함
+                messages = [systemMessageAsUser, ...messages];
+                logger.info('Added initial user message from assistant settings');
+            }
         }
 
-        if (!threadId) {
+        if (responseType === 'json') {
+            logger.info('Creating a new thread for JSON response to clear memory');
+            // JSON 응답일 경우, 기존 스레드를 사용하지 않고 새로운 스레드를 생성
+            const runParams: any = {
+                assistant_id: assistantId,
+                thread: {
+                    messages: messages
+                }
+            };
+            if (responseFormat) {
+                runParams.response_format = responseFormat;
+            }
+
+            const run = await openai.beta.threads.createAndRun(runParams) as RunExtended;
+            logger.info(`Created and ran a new thread. threadId=${run.thread_id}, runId=${run.id}`);
+
+            threadId = run.thread_id;
+            await waitForRunCompletion(threadId, run.id);
+        } else if (!threadId) {
             logger.info('No existing threadId found. Creating a new thread and running the assistant');
             // 새로운 스레드를 생성하고 실행
             const runParams: any = {
@@ -301,7 +369,9 @@ export const generateGPTReply = async (
         // 비동기로 메시지 저장 처리
         const conversationId = uuidv4();
         logger.info(`Saving conversation with conversationId=${conversationId}`);
-        saveMessages(user.id, message, reply, threadId, conversationId)
+
+        // JSON 응답일 경우, 새로운 스레드이므로 해당 threadId 사용
+        await saveMessages(user.id, message, reply, threadId, conversationId)
             .then(() => {
                 logger.info('Conversation saved successfully');
             })
@@ -316,6 +386,7 @@ export const generateGPTReply = async (
     }
 };
 
+// OpenAI Run 재시도 함수
 const retryOpenAIRun = async (threadId: string, runId: string, retryCount: number = 3): Promise<any> => {
     for (let attempt = 0; attempt < retryCount; attempt++) {
         try {

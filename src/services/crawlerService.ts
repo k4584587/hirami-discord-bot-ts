@@ -14,9 +14,6 @@ export async function fetchContentUsingXPath(url: string, xpath: string): Promis
     try {
         await page.goto(url, { waitUntil: 'networkidle2' });
 
-        // 일정 시간 대기
-        await new Promise(resolve => setTimeout(resolve, 3000)); // 3초 대기
-
         // XPath로 요소 찾기
         const elementHandle = await page.evaluateHandle((xpath) => {
             const result = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
