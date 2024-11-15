@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "D:\\Dev\\study\\hirami-discord-js\\logs\\error\\.ae6cef8ebd6d223a33708f239b6c9a5d5dd138ea-audit.json",
+    "files": [
+        {
+            "date": 1731652145453,
+            "name": "D:\\Dev\\study\\hirami-discord-js\\logs\\error\\2024-11-15.error.log",
+            "hash": "09756baaaba14602714c03c2e545bde07bcb33eba21041b3a5ababdb0d11cece"
+        }
+    ],
+    "hashType": "sha256"
+}

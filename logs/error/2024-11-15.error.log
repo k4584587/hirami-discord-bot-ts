@@ -1,0 +1,5 @@
+2024-11-15 15:30:30 [ERROR] : Run completion timed out
+2024-11-15 15:30:30 [ERROR] : generateGPTReply 에러: 실행(run) 완료 대기 시간 초과
+2024-11-15 15:32:45 [ERROR] : generateGPTReply 에러: 400 Can't add messages to thread_fsRmK99MXC2Uc9Eqsi2NUAQh while a run run_Nnducz73oAUP9suDGbDI762U is active.
+2024-11-15 15:35:07 [ERROR] : Run completion timed out
+2024-11-15 15:35:07 [ERROR] : generateGPTReply 에러: 실행(run) 완료 대기 시간 초과
