@@ -18,7 +18,7 @@ export const registerCommands = async (client: Client) => {
     const rest = new REST({ version: '10' }).setToken(token);
 
     // 클라이언트 ID 가져오기
-    const clientId = client.user?.id ?? process.env.CLIENT_ID;
+    const clientId = client.user?.id ?? process.env.DISCORD_CLIENT_ID;
     if (!clientId) {
         console.error('Client ID is not available');
         return;
