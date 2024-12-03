@@ -30,7 +30,8 @@
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "uuid": "^11.0.3",
     "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^5.0.0"
+    "winston-daily-rotate-file": "^5.0.0",
+    "@auth/core": "0.34.2"
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
