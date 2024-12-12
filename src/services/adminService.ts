@@ -21,8 +21,11 @@ export async function checkAdminStatus(discordId: string) {
 			};
 		}
 
+		// role에 따라 isAdmin 값 설정
+		const isAdmin = admin.role === 'ADMIN' ? true : false;
+
 		return {
-			isAdmin: admin.isActive,
+			isAdmin: isAdmin,
 			role: admin.role
 		};
 
@@ -43,13 +46,14 @@ export async function createAdmin(adminData: any) {
 	}
 
 	const newAdmin = await prisma.nbAdmins.create({
-	  data: {
+	data: {
 		discordId: adminData.id,
 		username: adminData.username,
+		globalName: adminData.global_name,
 		email: adminData.email,
 		avatar: adminData.avatar,
 		isActive: true,
-		role: 'USER',
+		role: 'USER', //기본값 USER 사용자로 생성 관리자가 승인을 해야 ADMIN 으로 바꿔야됨
 	  },
 	});
 

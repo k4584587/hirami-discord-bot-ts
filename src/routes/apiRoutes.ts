@@ -70,7 +70,7 @@ router.post('/crawl', getContent);
 /**
  * @swagger
  * /api/admin/check:
- *   get:
+ *   post:
  *     tags:
  *       - Admin
  *     summary: 관리자 권한 확인
@@ -116,7 +116,7 @@ router.post('/crawl', getContent);
  *                 error:
  *                   type: string
  */
-router.post('/checkAdminAccount', checkAdminAccount);
+router.post('/admin/check', checkAdminAccount);
 
 /**
  * @swagger
