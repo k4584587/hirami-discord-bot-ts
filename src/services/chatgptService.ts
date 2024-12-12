@@ -13,10 +13,10 @@ class GPTReplyError extends Error {
 	thread_id?: string;
 
 	constructor(message: string, status?: number, thread_id?: string) {
-		super(message);
-		this.name = 'GPTReplyError';
-		this.status = status;
-		this.thread_id = thread_id;
+	   super(message);
+	   this.name = 'GPTReplyError';
+	   this.status = status;
+	   this.thread_id = thread_id;
 	}
 }
 
@@ -24,10 +24,10 @@ class GPTReplyError extends Error {
 const prisma = new PrismaClient();
 
 prisma.$connect()
-	.then(() => logger.info('Prisma connected to the database'))
+	.then(() => logger.info('Prisma 데이터베이스 연결 성공'))
 	.catch(error => {
-		logger.error('Prisma connection error:', error);
-		process.exit(1);
+	   logger.error('Prisma 데이터베이스 연결 오류:', error);
+	   process.exit(1);
 	});
 
 const openai = new OpenAI({
@@ -37,6 +37,7 @@ const openai = new OpenAI({
 // 캐시를 위한 인메모리 저장소
 const cachedAssistantIds: Record<string, string> = {};
 const cachedAssistantSettings: Record<string, any> = {};
+const cachedThreadMessages: Record<string, { role: string, content: string }[]> = {}; // Thread 메시지 캐싱
 
 // 인터페이스 확장
 interface RunExtended extends Run {
@@ -44,90 +45,90 @@ interface RunExtended extends Run {
 }
 
 /**
- * Fetches and caches the assistant ID based on the assistant name.
+ * 어시스턴트 이름을 기반으로 어시스턴트 ID를 가져오고 캐싱합니다.
  */
 const getAssistantId = async (name: string): Promise<string> => {
-	logger.info(`Fetching assistantId for name: ${name}`);
+	logger.info(`${name}에 대한 assistantId를 가져옵니다.`);
 
 	if (cachedAssistantIds[name]) {
-		logger.info(`Found cached assistantId for ${name}: ${cachedAssistantIds[name]}`);
-		return cachedAssistantIds[name];
+	   logger.info(`${name}에 대한 캐시된 assistantId를 찾았습니다: ${cachedAssistantIds[name]}`);
+	   return cachedAssistantIds[name];
 	}
 
 	const assistant = await prisma.nbAssistants.findFirst({
-		where: { name },
-		select: { assistantId: true },
+	   where: { name },
+	   select: { assistantId: true },
 	});
 
 	if (!assistant?.assistantId) {
-		logger.error(`No assistantId found in DB for name: ${name}`);
-		throw new GPTReplyError(`데이터베이스에서 이름이 '${name}'인 유효한 assistantId를 찾을 수 없습니다.`);
+	   logger.error(`${name}에 대한 assistantId를 데이터베이스에서 찾을 수 없습니다.`);
+	   throw new GPTReplyError(`데이터베이스에서 이름이 '${name}'인 유효한 assistantId를 찾을 수 없습니다.`);
 	}
 
 	cachedAssistantIds[name] = assistant.assistantId;
-	logger.info(`Cached assistantId for ${name}: ${assistant.assistantId}`);
+	logger.info(`${name}에 대한 assistantId를 캐싱했습니다: ${assistant.assistantId}`);
 	return assistant.assistantId;
 };
 
 /**
- * Fetches and caches the assistant settings based on the assistant ID.
+ * 어시스턴트 ID를 기반으로 어시스턴트 설정을 가져오고 캐싱합니다.
  */
 const getAssistantSettings = async (assistantId: string): Promise<any> => {
-	logger.info(`Fetching assistant settings for assistantId: ${assistantId}`);
+	logger.info(`${assistantId}에 대한 어시스턴트 설정을 가져옵니다.`);
 
 	if (cachedAssistantSettings[assistantId]) {
-		logger.info(`Found cached assistant settings for assistantId: ${assistantId}`);
-		return cachedAssistantSettings[assistantId];
+	   logger.info(`${assistantId}에 대한 캐시된 어시스턴트 설정을 찾았습니다.`);
+	   return cachedAssistantSettings[assistantId];
 	}
 
 	try {
-		const assistantSettings = await openai.beta.assistants.retrieve(assistantId);
-		cachedAssistantSettings[assistantId] = assistantSettings;
-		logger.info(`Cached assistant settings for assistantId: ${assistantId}`);
-		return assistantSettings;
+	   const assistantSettings = await openai.beta.assistants.retrieve(assistantId);
+	   cachedAssistantSettings[assistantId] = assistantSettings;
+	   logger.info(`${assistantId}에 대한 어시스턴트 설정을 캐싱했습니다.`);
+	   return assistantSettings;
 	} catch (error) {
-		logger.error(`Error retrieving assistant settings for assistantId ${assistantId}:`, error);
-		throw new GPTReplyError('어시스턴트 설정을 가져오는 중 오류가 발생했습니다.');
+	   logger.error(`${assistantId} 어시스턴트 설정을 가져오는 중 오류가 발생했습니다:`, error);
+	   throw new GPTReplyError('어시스턴트 설정을 가져오는 중 오류가 발생했습니다.');
 	}
 };
 
 /**
- * Recursively checks if the OpenAI run has completed without using timeouts.
+ * 타임아웃을 사용하지 않고 OpenAI 실행이 완료되었는지 재귀적으로 확인합니다.
  */
 const checkRunCompletion = async (
 	threadId: string,
 	runId: string
 ): Promise<void> => {
-	logger.info(`Checking run completion: threadId=${threadId}, runId=${runId}`);
+	logger.info(`실행 완료 확인 중: threadId=${threadId}, runId=${runId}`);
 
 	let run: Run | undefined;
 
 	try {
-		run = await retryOpenAIRun(threadId, runId);
+	   run = await openai.beta.threads.runs.retrieve(threadId, runId);
 	} catch (error) {
-		logger.error('Error during run status check:', error);
-		throw new GPTReplyError('실행(run) 상태를 확인하는 중 오류가 발생했습니다.', undefined, threadId);
+	   logger.error('실행 상태 확인 중 오류 발생:', error);
+	   throw new GPTReplyError('실행(run) 상태를 확인하는 중 오류가 발생했습니다.', undefined, threadId);
 	}
 
-	logger.info(`Run status: ${run.status}`);
+	logger.info(`실행 상태: ${run.status}`);
 
 	if (run.status === 'completed') {
-		logger.info('Run completed successfully');
-		return;
+	   logger.info('실행이 성공적으로 완료되었습니다.');
+	   return;
 	}
 
 	if (['failed', 'cancelled'].includes(run.status)) {
-		logger.error(`Run failed with status: ${run.status}`);
-		throw new GPTReplyError(`Run failed with status: ${run.status}`, undefined, threadId);
+	   logger.error(`실행 실패, 상태: ${run.status}`);
+	   throw new GPTReplyError(`Run failed with status: ${run.status}`, undefined, threadId);
 	}
 
 	// Run이 아직 완료되지 않았을 때 재귀적으로 상태를 확인
-	logger.warn('Run is not completed yet. Checking again...');
+	logger.warn('실행이 아직 완료되지 않았습니다. 다시 확인합니다...');
 	await checkRunCompletion(threadId, runId);
 };
 
 /**
- * Saves user and bot messages to the database.
+ * 사용자 및 봇 메시지를 데이터베이스에 저장합니다.
  */
 const saveMessages = async (
 	userId: bigint,
@@ -136,96 +137,65 @@ const saveMessages = async (
 	threadId: string,
 	conversationId: string
 ) => {
-	logger.info(`Saving messages to DB: userId=${userId}, threadId=${threadId}, conversationId=${conversationId}`);
+	logger.info(`메시지를 데이터베이스에 저장 중: userId=${userId}, threadId=${threadId}, conversationId=${conversationId}`);
 	const now = new Date();
 
 	try {
-		await prisma.$transaction([
-			prisma.nbChatMessages.createMany({
-				data: [
-					{
-						userId,
-						content: userMessage,
-						isBotMessage: false,
-						isDeleted: false,
-						timestamp: now,
-						conversationId,
-						threadId,
-					},
-					{
-						userId,
-						content: botReply,
-						isBotMessage: true,
-						isDeleted: false,
-						timestamp: now,
-						conversationId,
-						threadId,
-					}
-				]
-			}),
-			prisma.nbChatUsers.update({
-				where: { id: userId },
-				data: { lastInteraction: now }
-			})
-		]);
-		logger.info('Messages saved successfully');
+	   // 비동기 트랜잭션 처리
+	   await prisma.$transaction(async (tx) => {
+		 await tx.nbChatMessages.createMany({
+		   data: [
+			 {
+				userId,
+				content: userMessage,
+				isBotMessage: false,
+				isDeleted: false,
+				timestamp: now,
+				conversationId,
+				threadId,
+			 },
+			 {
+				userId,
+				content: botReply,
+				isBotMessage: true,
+				isDeleted: false,
+				timestamp: now,
+				conversationId,
+				threadId,
+			 }
+		   ]
+		 });
+		 await tx.nbChatUsers.update({
+		   where: { id: userId },
+		   data: { lastInteraction: now }
+		 });
+	   });
+	   logger.info('메시지 저장 성공');
 	} catch (error) {
-		logger.error('Error saving messages:', error);
-		throw new GPTReplyError('메시지를 저장하는 중 오류가 발생했습니다.');
+	   logger.error('메시지 저장 중 오류 발생:', error);
+	   throw new GPTReplyError('메시지를 저장하는 중 오류가 발생했습니다.');
 	}
 };
 
 /**
- * Retries retrieving an OpenAI run with exponential backoff.
- */
-const retryOpenAIRun = async (
-	threadId: string,
-	runId: string,
-	retryCount: number = 3
-): Promise<Run> => {
-	for (let attempt = 0; attempt < retryCount; attempt++) {
-		try {
-			const run = await openai.beta.threads.runs.retrieve(threadId, runId);
-			return run as Run;
-		} catch (error) {
-			logger.error(`Attempt ${attempt + 1} failed to retrieve run. Retrying...`);
-			await new Promise(resolve => setTimeout(resolve, 500)); // 짧은 재시도 대기 시간
-		}
-	}
-	throw new GPTReplyError('Run 정보를 여러 번 시도했지만 가져오지 못했습니다.');
-};
-
-/**
- * Processes the assistant's reply based on the response type.
+ * 응답 유형에 따라 어시스턴트의 응답을 처리합니다.
  */
 const processReply = (content: any, responseType: 'text' | 'json'): string => {
 	if (responseType === 'json') {
-		logger.info('Processing JSON response');
-		if (Array.isArray(content) && content.length > 0) {
-			const firstContent = content[0];
-			if (firstContent.type === 'text' && typeof firstContent.text?.value === 'string') {
-				return firstContent.text.value;
-			}
-		}
-		logger.error('Invalid JSON response format');
-		throw new GPTReplyError('JSON 응답 형식이 올바르지 않습니다.');
+	   logger.info('JSON 응답 처리 중');
+	   if (Array.isArray(content) && content.length > 0 && content[0].type === 'text' && typeof content[0].text?.value === 'string') {
+		 return content[0].text.value;
+	   }
+	   logger.error('잘못된 JSON 응답 형식');
+	   throw new GPTReplyError('JSON 응답 형식이 올바르지 않습니다.');
 	} else {
-		logger.info('Processing text response');
-		if (Array.isArray(content)) {
-			return content
-				.filter(item => 'text' in item)
-				.map(item => item.text?.value || '')
-				.join('');
-		} else if (typeof content === 'string') {
-			return content;
-		}
-		logger.error('Invalid text response format');
-		throw new GPTReplyError('응답 형식이 올바르지 않습니다.');
+	   logger.info('텍스트 응답 처리 중');
+	   return Array.isArray(content) ? content.map(item => item.text?.value || '').join('') : content;
 	}
 };
 
 /**
- * Generates a GPT reply based on user input and assistant settings.
+ * 사용자 입력 및 어시스턴트 설정을 기반으로 GPT 응답을 생성합니다.
  */
 export const generateGPTReply = async (
 	discordId: string,
@@ -237,169 +207,185 @@ export const generateGPTReply = async (
 	logger.info(`generateGPTReply 시작: discordId=${discordId}, username=${username}, message=${message}, name=${name}, responseType=${responseType}`);
 
 	try {
-		// 병렬로 사용자 업서트 및 assistantId 가져오기
-		logger.info('Upserting user and fetching assistantId in parallel');
-		const [user, assistantId] = await Promise.all([
-			prisma.nbChatUsers.upsert({
-				where: { discordId },
-				update: {},
-				create: {
-					discordId,
-					username,
-					contextEnabled: true,
-					timestamp: new Date(),
-					lastInteraction: new Date(),
-				}
-			}),
-			getAssistantId(name)
-		]);
-		logger.info(`User upserted with id=${user.id}, assistantId=${assistantId}`);
+	   // 병렬로 사용자 업서트 및 assistantId 가져오기
+	   logger.info('사용자 업서트 및 assistantId 병렬 처리 중');
+	   const [user, assistantId] = await Promise.all([
+		 prisma.nbChatUsers.upsert({
+		   where: { discordId },
+		   update: {},
+		   create: {
+			 discordId,
+			 username,
+			 contextEnabled: true,
+			 timestamp: new Date(),
+			 lastInteraction: new Date(),
+		   }
+		 }),
+		 getAssistantId(name)
+	   ]);
+	   logger.info(`사용자 업서트 완료, id=${user.id}, assistantId=${assistantId}`);
 
-		// 어시스턴트 설정 가져오기
-		const assistantSettings = await getAssistantSettings(assistantId);
-		logger.info(`Retrieved assistant settings: ${JSON.stringify(assistantSettings)}`);
+	   // 어시스턴트 설정 가져오기
+	   const assistantSettings = await getAssistantSettings(assistantId);
+	   logger.info(`어시스턴트 설정 가져오기 완료: ${JSON.stringify(assistantSettings)}`);
 
-		// 초기 메시지 구성
-		let initialUserMessage = assistantSettings.instructions || 'You are an assistant.';
-		if (responseType === 'json') {
-			initialUserMessage += ' Please provide the response in JSON format.';
-			logger.info('Appending JSON response instruction to initial user message');
-		}
+	   // 초기 메시지 구성
+	   let initialUserMessage = assistantSettings.instructions || 'You are an assistant.';
+	   if (responseType === 'json') {
+		 initialUserMessage += ' Please provide the response in JSON format.';
+		 logger.info('JSON 응답 형식을 위한 초기 사용자 메시지 추가');
+	   }
 
-		const systemMessage = {
-			role: 'user',
-			content: initialUserMessage
-		};
+	   const systemMessage = {
+		 role: 'user',
+		 content: initialUserMessage
+	   };
 
-		// ThreadId 결정
-		let threadId: string | undefined;
-		if (responseType !== 'json') {
-			logger.info('Fetching the latest threadId for the user');
-			const threadMessage = await prisma.nbChatMessages.findFirst({
-				where: {
-					userId: user.id,
-					isDeleted: false,
-				},
-				orderBy: { timestamp: 'desc' },
-				select: { threadId: true }
-			});
-			// Explicitly convert null to undefined
-			threadId = threadMessage?.threadId ?? undefined;
-			logger.info(`Retrieved threadId: ${threadId || 'None'}`);
-		} else {
-			logger.info('JSON response requested. Ignoring existing threadId to clear memory.');
-		}
+	   // ThreadId 결정
+	   let threadId: string | undefined;
+	   if (responseType !== 'json') {
+		 logger.info('사용자의 최신 threadId 가져오는 중');
+		 const threadMessage = await prisma.nbChatMessages.findFirst({
+		   where: {
+			 userId: user.id,
+			 isDeleted: false,
+		   },
+		   orderBy: { timestamp: 'desc' },
+		   select: { threadId: true }
+		 });
+		 // 명시적으로 null을 undefined로 변환
+		 threadId = threadMessage?.threadId ?? undefined;
+		 logger.info(`threadId 가져오기 완료: ${threadId || '없음'}`);
+	   } else {
+		 logger.info('JSON 응답 요청됨. 메모리 초기화를 위해 기존 threadId 무시');
+	   }
 
-		// Response format 설정
-		const responseFormat = responseType === 'json' ? { type: 'json_object' } : undefined;
-		if (responseFormat) {
-			logger.info('Response format set to JSON');
-		}
+	   // Response format 설정
+	   const responseFormat = responseType === 'json' ? { type: 'json_object' } : undefined;
+	   if (responseFormat) {
+		 logger.info('응답 형식을 JSON으로 설정');
+	   }
 
-		// 메시지 배열 구성
-		let messages: { role: string, content: string }[] = [{ role: 'user', content: message }];
-		if (responseType === 'json') {
-			messages = [systemMessage, ...messages];
-			logger.info('Added initial user message for JSON response format');
-		} else if (systemMessage.content !== 'You are an assistant.') {
-			messages = [systemMessage, ...messages];
-			logger.info('Added initial user message from assistant settings');
-		}
+	   // Thread 및 Run 처리
+	   if (responseType === 'json' || !threadId) {
+		 logger.info(responseType === 'json' ? '메모리 초기화를 위해 JSON 응답에 대한 새 스레드 생성' : '기존 threadId를 찾을 수 없습니다. 새 스레드를 생성하고 어시스턴트를 실행합니다.');
 
-		// Thread 및 Run 처리
-		if (responseType === 'json' || !threadId) {
-			logger.info(responseType === 'json' ? 'Creating a new thread for JSON response to clear memory' : 'No existing threadId found. Creating a new thread and running the assistant');
+		 // 메시지 배열 구성 (새로운 thread)
+		 let messages: { role: string, content: string }[] = [{ role: 'user', content: message }];
+		 if (responseType === 'json') {
+		   messages = [systemMessage, ...messages];
+		   logger.info('JSON 응답 형식을 위한 초기 사용자 메시지 추가');
+		 } else if (systemMessage.content !== 'You are an assistant.') {
+		   messages = [systemMessage, ...messages];
+		   logger.info('어시스턴트 설정에서 초기 사용자 메시지 추가');
+		 }
 
-			const runParams: any = {
-				assistant_id: assistantId,
-				thread: { messages },
-				...(responseFormat && { response_format: responseFormat })
-			};
+		 const runParams: any = {
+		   assistant_id: assistantId,
+		   thread: { messages },
+		   ...(responseFormat && { response_format: responseFormat })
+		 };
 
-			let run: RunExtended;
-			try {
-				run = await openai.beta.threads.createAndRun(runParams) as RunExtended;
-			} catch (error) {
-				logger.error('Error creating and running thread:', error);
-				throw new GPTReplyError('스레드를 생성하고 실행하는 중 오류가 발생했습니다.');
-			}
+		 let run: RunExtended;
+		 try {
+		   run = await openai.beta.threads.createAndRun(runParams) as RunExtended;
+		 } catch (error) {
+		   logger.error('스레드 생성 및 실행 중 오류 발생:', error);
+		   throw new GPTReplyError('스레드를 생성하고 실행하는 중 오류가 발생했습니다.');
+		 }
 
-			logger.info(`Created and ran a new thread. threadId=${run.thread_id}, runId=${run.id}`);
+		 logger.info(`새 스레드 생성 및 실행 완료. threadId=${run.thread_id}, runId=${run.id}`);
 
-			threadId = run.thread_id;
-			await checkRunCompletion(threadId, run.id);
-		} else {
-			logger.info(`Existing threadId found: ${threadId}. Adding user message to thread`);
-			try {
-				await openai.beta.threads.messages.create(threadId, { role: 'user', content: message });
-				logger.info('User message added to thread');
-			} catch (error) {
-				logger.error('Error adding user message to thread:', error);
-				throw new GPTReplyError('사용자 메시지를 스레드에 추가하는 중 오류가 발생했습니다.', undefined, threadId);
-			}
+		 threadId = run.thread_id;
+		 await checkRunCompletion(threadId, run.id);
 
-			const runParams: any = { assistant_id: assistantId, ...(responseFormat && { response_format: responseFormat }) };
-			let run: RunExtended;
-			try {
-				run = await openai.beta.threads.runs.create(threadId, runParams) as RunExtended;
-				logger.info(`Created a new run in existing thread. runId=${run.id}`);
-			} catch (error) {
-				logger.error('Error creating run in existing thread:', error);
-				throw new GPTReplyError('기존 스레드에서 실행(run)을 생성하는 중 오류가 발생했습니다.', undefined, threadId);
-			}
+		 // 캐시 업데이트 (새로운 thread)
+		 cachedThreadMessages[threadId] = messages;
 
-			await checkRunCompletion(threadId, run.id);
-		}
+	   } else {
+		 logger.info(`기존 threadId 찾음: ${threadId}. 스레드에 사용자 메시지 추가 중`);
 
-		// 최신 메시지 가져오기
-		logger.info(`Fetching the latest message from threadId=${threadId}`);
-		let threadMessages;
-		try {
-			threadMessages = await openai.beta.threads.messages.list(threadId, {
-				limit: 1,
-				order: 'desc'
-			});
-		} catch (error) {
-			logger.error('Error fetching messages from thread:', error);
-			throw new GPTReplyError('스레드에서 메시지를 가져오는 중 오류가 발생했습니다.', undefined, threadId);
-		}
+		 // 캐시된 메시지 가져오기
+		 let messages: { role: string, content: string }[] = cachedThreadMessages[threadId] || [];
 
-		const lastMessage = threadMessages.data[0];
-		logger.info(`Last message retrieved: ${JSON.stringify(lastMessage)}`);
+		 // 새 메시지 추가
+		 messages.push({ role: 'user', content: message });
 
-		if (!lastMessage || lastMessage.role !== 'assistant') {
-			logger.error('Assistant reply not found in the latest message');
-			throw new GPTReplyError('어시스턴트 응답을 찾을 수 없습니다.');
-		}
+		 try {
+		   // OpenAI API 호출 (messages는 캐시된 내용 사용)
+		   await openai.beta.threads.messages.create(threadId, { role: 'user', content: message });
+		   logger.info('스레드에 사용자 메시지 추가 완료');
 
-		// 응답 처리
-		let reply: string;
-		try {
-			reply = processReply(lastMessage.content, responseType);
-		} catch (error) {
-			logger.error('Error processing reply:', error);
-			throw error;
-		}
+		   const runParams: any = { assistant_id: assistantId, ...(responseFormat && { response_format: responseFormat }) };
+		   let run: RunExtended;
+		   try {
+			 run = await openai.beta.threads.runs.create(threadId, runParams) as RunExtended;
+			 logger.info(`기존 스레드에서 새 실행 생성 완료. runId=${run.id}`);
+		   } catch (error) {
+			 logger.error('기존 스레드에서 실행 생성 중 오류 발생:', error);
+			 throw new GPTReplyError('기존 스레드에서 실행(run)을 생성하는 중 오류가 발생했습니다.', undefined, threadId);
+		   }
 
-		logger.info(`Generated reply: ${reply}`);
+		   await checkRunCompletion(threadId, run.id);
 
-		// 메시지 저장
-		const conversationId = uuidv4();
-		logger.info(`Saving conversation with conversationId=${conversationId}`);
+		   // 캐시 업데이트
+		   cachedThreadMessages[threadId] = messages;
 
-		try {
-			await saveMessages(user.id, message, reply, threadId, conversationId);
-			logger.info('Conversation saved successfully');
-		} catch (error) {
-			logger.error('메시지 저장 중 오류:', error);
-			throw new GPTReplyError('메시지를 저장하는 중 오류가 발생했습니다.');
-		}
+		 } catch (error) {
+		   logger.error('스레드에 사용자 메시지 추가 중 오류 발생:', error);
+		   throw new GPTReplyError('사용자 메시지를 스레드에 추가하는 중 오류가 발생했습니다.', undefined, threadId);
+		 }
+	   }
 
-		return reply;
+	   // 최신 메시지 가져오기
+	   logger.info(`${threadId}에서 최신 메시지 가져오는 중`);
+	   let threadMessages;
+	   try {
+		 threadMessages = await openai.beta.threads.messages.list(threadId, {
+		   limit: 1,
+		   order: 'desc'
+		 });
+	   } catch (error) {
+		 logger.error('스레드에서 메시지 가져오는 중 오류 발생:', error);
+		 throw new GPTReplyError('스레드에서 메시지를 가져오는 중 오류가 발생했습니다.', undefined, threadId);
+	   }
+
+	   const lastMessage = threadMessages.data[0];
+	   logger.info(`최신 메시지 가져오기 완료: ${JSON.stringify(lastMessage)}`);
+
+	   if (!lastMessage || lastMessage.role !== 'assistant') {
+		 logger.error('최신 메시지에서 어시스턴트 응답을 찾을 수 없습니다.');
+		 throw new GPTReplyError('어시스턴트 응답을 찾을 수 없습니다.');
+	   }
+
+	   // 응답 처리
+	   let reply: string;
+	   try {
+		 reply = processReply(lastMessage.content, responseType);
+	   } catch (error) {
+		 logger.error('응답 처리 중 오류 발생:', error);
+		 throw error;
+	   }
+
+	   logger.info(`생성된 응답: ${reply}`);
+
+	   // 메시지 저장
+	   const conversationId = uuidv4();
+	   logger.info(`${conversationId}를 사용하여 대화 저장 중`);
+
+	   try {
+		 await saveMessages(user.id, message, reply, threadId, conversationId);
+		 logger.info('대화 저장 성공');
+	   } catch (error) {
+		 logger.error('메시지 저장 중 오류:', error);
+		 throw new GPTReplyError('메시지를 저장하는 중 오류가 발생했습니다.');
+	   }
+
+	   return reply;
 
 	} catch (error: any) {
-		logger.error('generateGPTReply 에러 발생:', error);
-		const errorMessage = error.error?.message || error.message || '알 수 없는 오류가 발생했습니다.';
-		throw new GPTReplyError(errorMessage, error.status, error.thread_id);
+	   logger.error('generateGPTReply 에러 발생:', error);
+	   const errorMessage = error.error?.message || error.message || '알 수 없는 오류가 발생했습니다.';
+	   throw new GPTReplyError(errorMessage, error.status, error.thread_id);
 	}
 };
