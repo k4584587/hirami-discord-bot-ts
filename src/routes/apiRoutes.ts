@@ -6,6 +6,7 @@ import {
 } from '../controllers/adminController';
 import {
 	createCrawlingSiteController,
+	deleteCrawlingSiteController,
 	getContent,
 	getCrawlingSitesController,
 } from '../controllers/crawlerController';
@@ -228,6 +229,6 @@ router.get('/crawling-sites', getCrawlingSitesController);
  *       500:
  *         description: 서버 오류
  */
-router.delete('/crawling-sites/:id', deleteCrawlingSite);
+router.delete('/crawling-sites/:id', deleteCrawlingSiteController);
 
 export default router;
