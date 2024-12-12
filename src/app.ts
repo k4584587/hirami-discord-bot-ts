@@ -5,6 +5,8 @@ import { interactionCreate } from './events/interactionCreate';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import cors from 'cors';
+
 
 import apiRoutes from "./routes/apiRoutes";
 
@@ -35,6 +37,7 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 const app: Express = express();
 const port = process.env.PORT || 3000;
 
+app.use(cors()); // 모든 도메인에서의 요청 허용
 app.use(express.json());
 
 // Swagger UI 설정

@@ -116,3 +116,16 @@ model NbAdmins {
 
   @@map("nb_admins")
 }
+
+model CrawlingSite {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(255)
+  url           String    @db.VarChar(255)
+  xpath         String    @db.VarChar(255)
+  assistantName String    @db.VarChar(255)
+  interval      Int
+  isActive      Boolean
+  lastCrawled   DateTime? @db.DateTime(6)
+
+  @@map("nb_crawling_sites")
+}

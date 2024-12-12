@@ -1,9 +1,17 @@
+//src/routes/apiRoutes.ts
 import { Router } from 'express';
 import {
 	checkAdminAccount,
 	createAdminController
 } from '../controllers/adminController';
-import { getContent } from '../controllers/crawlerController';
+import {
+	createCrawlingSiteController,
+	getContent,
+	getCrawlingSitesController,
+} from '../controllers/crawlerController';
+import {
+	deleteCrawlingSite
+} from "../services/crawlerService";
 
 const router = Router();
 
@@ -145,6 +153,81 @@ router.post('/admin/check', checkAdminAccount);
  *       500:
  *         description: 서버 오류
  */
-router.post('/admin/create', createAdminController); // 새로운 라우터 추가
+router.post('/admin/create', createAdminController);
+
+/**
+ * @swagger
+ * /api/crawling-sites:
+ *   post:
+ *     tags:
+ *       - CrawlingSite
+ *     summary: CrawlingSite 생성
+ *     description: 새로운 CrawlingSite 를 생성합니다.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               url:
+ *                 type: string
+ *               xpath:
+ *                 type: string
+ *               assistantName:
+ *                 type: string
+ *               interval:
+ *                 type: integer
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       201:
+ *         description: CrawlingSite 생성 성공
+ *       500:
+ *         description: 서버 오류
+ */
+router.post('/crawling-sites', createCrawlingSiteController);
+
+
+/**
+ * @swagger
+ * /api/crawling-sites:
+ *   get:
+ *     tags:
+ *       - CrawlingSite
+ *     summary: CrawlingSite 목록 조회
+ *     description: 모든 CrawlingSite 목록을 조회합니다.
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *       500:
+ *         description: 서버 오류
+ */
+router.get('/crawling-sites', getCrawlingSitesController);
+
+/**
+ * @swagger
+ * /api/crawling-sites/{id}:
+ *   delete:
+ *     tags:
+ *       - CrawlingSite
+ *     summary: CrawlingSite 삭제
+ *     description: ID를 기반으로 CrawlingSite 를 삭제합니다.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 삭제할 CrawlingSite 의 ID
+ *     responses:
+ *       204:
+ *         description: 삭제 성공
+ *       500:
+ *         description: 서버 오류
+ */
+router.delete('/crawling-sites/:id', deleteCrawlingSite);
 
 export default router;

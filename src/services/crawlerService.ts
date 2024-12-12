@@ -1,4 +1,10 @@
+//src/services/crawlerService.ts
 import puppeteer from 'puppeteer';
+import {
+	PrismaClient
+} from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export async function fetchContentUsingXPath(url: string, xpath: string): Promise<string | null> {
 	const browser = await puppeteer.launch({
@@ -34,4 +40,42 @@ export async function fetchContentUsingXPath(url: string, xpath: string): Promis
 	} finally {
 		await browser.close();
 	}
+}
+
+export async function createCrawlingSite(data: {
+  name: string;
+  url: string;
+  xpath: string;
+  assistantName: string;
+  interval: number;
+  isActive: boolean;
+}) {
+  try {
+	return await prisma.crawlingSite.create({
+	  data,
+	});
+  } catch (error) {
+	console.error('createCrawlingSite 서비스 에러:', error);
+	throw new Error('CrawlingSite 생성에 실패했습니다.');
+  }
+}
+
+export async function getCrawlingSites() {
+  try {
+	return await prisma.crawlingSite.findMany();
+  } catch (error) {
+	console.error('getCrawlingSites 서비스 에러:', error);
+	throw new Error('CrawlingSite 조회에 실패했습니다.');
+  }
+}
+
+export async function deleteCrawlingSite(id: number) {
+  try {
+	await prisma.crawlingSite.delete({
+	  where: { id },
+	});
+  } catch (error) {
+	console.error('deleteCrawlingSite 서비스 에러:', error);
+	throw new Error('CrawlingSite 삭제에 실패했습니다.');
+  }
 }

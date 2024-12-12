@@ -1,5 +1,11 @@
+//src/controllers/crawlerController.ts
 import { Request, Response } from 'express';
-import { fetchContentUsingXPath } from '../services/crawlerService';
+import {
+	createCrawlingSite,
+	deleteCrawlingSite,
+	fetchContentUsingXPath,
+	getCrawlingSites
+} from '../services/crawlerService';
 import { generateGPTReply } from '../services/chatgptService';
 
 export async function getContent(req: Request, res: Response) {
@@ -26,4 +32,43 @@ export async function getContent(req: Request, res: Response) {
 		console.error('getContent 에러:', error);
 		res.status(500).json({ error: 'Failed to fetch content.' });
 	}
+}
+
+// CrawlingSite 생성
+export async function createCrawlingSiteController(req: Request, res: Response) {
+  try {
+	const { name, url, xpath, assistantName, interval, isActive } = req.body;
+	const newCrawlingSite = await createCrawlingSite({
+	  name,
+	  url,
+	  xpath,
+	  assistantName,
+	  interval,
+	  isActive,
+	});
+	res.status(201).json(newCrawlingSite);
+  } catch (error: any) {
+	res.status(500).json({ error: error.message });
+  }
+}
+
+// CrawlingSite 조회
+export async function getCrawlingSitesController(req: Request, res: Response) {
+  try {
+	const crawlingSites = await getCrawlingSites();
+	res.json(crawlingSites);
+  } catch (error: any) {
+	res.status(500).json({ error: error.message });
+  }
+}
+
+// CrawlingSite 삭제
+export async function deleteCrawlingSiteController(req: Request, res: Response) {
+  try {
+	const { id } = req.params;
+	await deleteCrawlingSite(parseInt(id));
+	res.status(204).send();
+  } catch (error: any) {
+	res.status(500).json({ error: error.message });
+  }
 }
