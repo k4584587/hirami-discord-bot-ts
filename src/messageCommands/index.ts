@@ -4,15 +4,15 @@ import { deleteCommand } from './delete';
 import {chatgptCommand} from "./chatgpt";
 
 export const messageCommands: MessageCommand[] = [
-    deleteCommand,
-    chatgptCommand
+	deleteCommand,
+	chatgptCommand
 ];
 
 export const handleMessageCommands = async (message: Message) => {
-    const command = messageCommands.find(cmd => message.content === cmd.name);
-    if (command) {
-        await command.execute(message);
-        return true;
-    }
-    return false;
+	const command = messageCommands.find(cmd => message.content === cmd.name);
+	if (command) {
+		await command.execute(message);
+		return true;
+	}
+	return false;
 };
