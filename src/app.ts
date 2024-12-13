@@ -6,9 +6,8 @@ import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
-
-
-import apiRoutes from "./routes/apiRoutes";
+import adminRoutes from "./routes/adminRouter";
+import crawlingRouter from "./routes/crawlingRouter";
 
 dotenv.config();
 
@@ -43,7 +42,8 @@ app.use(express.json());
 // Swagger UI 설정
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-app.use('/api', apiRoutes);
+app.use('/api', adminRoutes);
+app.use('/api', crawlingRouter);
 
 app.get('/', (_req: Request, res: Response) => {
   res.send('Hello, TypeScript Express!');

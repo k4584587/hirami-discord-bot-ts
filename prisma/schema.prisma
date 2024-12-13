@@ -118,14 +118,36 @@ model NbAdmins {
 }
 
 model CrawlingSite {
-  id            Int       @id @default(autoincrement())
-  name          String    @db.VarChar(255)
-  url           String    @db.VarChar(255)
-  xpath         String    @db.VarChar(255)
-  assistantName String    @db.VarChar(255)
+  id            Int            @id @default(autoincrement())
+  name          String         @db.VarChar(255)
+  url           String         @db.VarChar(255)
+  xpath         String         @db.VarChar(255)
+  assistantName String         @db.VarChar(255)
   interval      Int
   isActive      Boolean
-  lastCrawled   DateTime? @db.DateTime(6)
+  lastCrawled   DateTime?      @db.DateTime(6)
+  CrawlingData  CrawlingData[]
 
   @@map("nb_crawling_sites")
+}
+
+model CrawlingData {
+  id               BigInt       @id @default(autoincrement())
+  crawlingSiteId   Int
+  postId           String?      @db.VarChar(255)
+  title            String?      @db.VarChar(255)
+  content          String?      @db.Text
+  link             String?      @db.VarChar(255)
+  author           String?      @db.VarChar(255)
+  date             String?      @db.VarChar(255)
+  views            Int?
+  comments         Int?
+  likes            Int?
+  isSent           Boolean      @default(false)
+  discordChannelId String?      @db.VarChar(255)
+  createdAt        DateTime     @default(now()) @db.Timestamp()
+  updatedAt        DateTime     @updatedAt @db.Timestamp()
+  crawlingSite     CrawlingSite @relation(fields: [crawlingSiteId], references: [id])
+
+  @@map("nb_crawling_data")
 }

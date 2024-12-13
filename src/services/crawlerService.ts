@@ -79,3 +79,25 @@ export async function deleteCrawlingSite(id: number) {
 	throw new Error('CrawlingSite 삭제에 실패했습니다.');
   }
 }
+
+/**
+ * CrawlingSite 업데이트 서비스
+ */
+export async function updateCrawlingSite(id: number, data: {
+  name?: string;
+  url?: string;
+  xpath?: string;
+  assistantName?: string;
+  interval?: number;
+  isActive?: boolean;
+}) {
+  try {
+    return await prisma.crawlingSite.update({
+      where: { id },
+      data,
+    });
+  } catch (error) {
+    console.error('updateCrawlingSite 서비스 에러:', error);
+    throw new Error('CrawlingSite 업데이트에 실패했습니다.');
+  }
+}

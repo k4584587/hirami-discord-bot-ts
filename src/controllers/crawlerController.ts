@@ -4,7 +4,8 @@ import {
 	createCrawlingSite,
 	deleteCrawlingSite,
 	fetchContentUsingXPath,
-	getCrawlingSites
+	getCrawlingSites,
+	updateCrawlingSite
 } from '../services/crawlerService';
 import { generateGPTReply } from '../services/chatgptService';
 
@@ -70,5 +71,29 @@ export async function deleteCrawlingSiteController(req: Request, res: Response) 
 	res.status(204).send();
   } catch (error: any) {
 	res.status(500).json({ error: error.message });
+  }
+}
+
+export async function updateCrawlingSiteController(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { name, url, xpath, assistantName, interval, isActive } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: 'CrawlingSite ID가 필요합니다.' });
+    }
+
+    const updatedCrawlingSite = await updateCrawlingSite(parseInt(id), {
+      name,
+      url,
+      xpath,
+      assistantName,
+      interval,
+      isActive,
+    });
+
+    res.json(updatedCrawlingSite);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 }
