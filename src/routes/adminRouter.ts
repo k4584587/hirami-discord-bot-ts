@@ -11,9 +11,6 @@ import {
 	getCrawlingSitesController,
 	updateCrawlingSiteController,
 } from '../controllers/crawlerController';
-import {
-	deleteCrawlingSite
-} from "../services/crawlerService";
 
 const router = Router();
 
