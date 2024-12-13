@@ -8,24 +8,26 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
 import adminRoutes from "./routes/adminRouter";
 import crawlingRouter from "./routes/crawlingRouter";
+import compression
+  from "compression";
 
 dotenv.config();
 
 // Swagger 설정
 const swaggerOptions = {
   definition: {
-	openapi: '3.0.0',
-	info: {
-	  title: 'Hirami Discord Bot API',
-	  version: '1.0.0',
-	  description: 'API documentation for Hirami Discord Bot',
-	},
-	servers: [
-	  {
-		url: process.env.SWAGGER_SERVER_URL || `http://localhost:${process.env.PORT || 3000}`,
-		description: 'Development server',
-	  },
-	],
+    openapi: '3.0.0',
+    info: {
+      title: 'Hirami Discord Bot API',
+      version: '1.0.0',
+      description: 'API documentation for Hirami Discord Bot',
+    },
+    servers: [
+      {
+        url: process.env.SWAGGER_SERVER_URL || `http://localhost:${process.env.PORT || 3000}`,
+        description: 'Development server',
+      },
+    ],
   },
   apis: ['./src/routes/*.ts'], // API 라우트 파일 경로
 };
@@ -36,7 +38,13 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 const app: Express = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors()); // 모든 도메인에서의 요청 허용
+// CORS 설정 (모든 도메인에서의 요청 허용)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+}));
+
 app.use(express.json());
 
 // Swagger UI 설정
@@ -52,11 +60,11 @@ app.get('/', (_req: Request, res: Response) => {
 // Discord 봇 설정
 const client = new Client({
   intents: [
-	GatewayIntentBits.Guilds,
-	GatewayIntentBits.GuildMessages,
-	GatewayIntentBits.MessageContent,
-	GatewayIntentBits.GuildMembers,
-	GatewayIntentBits.GuildIntegrations,
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildIntegrations,
   ]
 });
 
@@ -65,29 +73,29 @@ client.on(Events.InteractionCreate, interactionCreate);
 
 async function startBot() {
   try {
-	// 이벤트 등록
-	registerEvents(client);
+    // 이벤트 등록
+    registerEvents(client);
 
-	// Discord 봇 로그인
-	await client.login(process.env.DISCORD_TOKEN);
+    // Discord 봇 로그인
+    await client.login(process.env.DISCORD_TOKEN);
   } catch (error) {
-	console.error('Error starting Discord bot:', error);
+    console.error('Error starting Discord bot:', error);
   }
 }
 
 // Express 서버와 Discord 봇 함께 시작
 async function startServer() {
   try {
-	// Express 서버 시작
-	app.listen(port, () => {
-	  console.log(`Server is running at http://localhost:${port}`);
-	});
+    // Express 서버 시작
+    app.listen(port, () => {
+      console.log(`Server is running at http://localhost:${port}`);
+    });
 
-	// Discord 봇 시작
-	await startBot();
+    // Discord 봇 시작
+    await startBot();
   } catch (error) {
-	console.error('Error starting server:', error);
-	process.exit(1);
+    console.error('Error starting server:', error);
+    process.exit(1);
   }
 }
 

@@ -5,6 +5,7 @@ import {
 	deleteCrawlingSiteController,
 	getContent,
 	getCrawlingSitesController,
+	getCrawlingStatusController,
 	updateCrawlingSiteController,
 } from '../controllers/crawlerController';
 
@@ -68,7 +69,9 @@ const router = Router();
  *                 error:
  *                   type: string
  */
+router.get('/crawling-status', getCrawlingStatusController);
 router.post('/crawl', getContent);
+router.get('/crawl', getContent);
 
 
 /**
