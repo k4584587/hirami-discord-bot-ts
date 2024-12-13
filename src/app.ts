@@ -8,8 +8,6 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
 import adminRoutes from "./routes/adminRouter";
 import crawlingRouter from "./routes/crawlingRouter";
-import compression
-  from "compression";
 
 dotenv.config();
 
