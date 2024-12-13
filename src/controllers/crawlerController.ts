@@ -9,7 +9,6 @@ import {
   updateCrawlingSite
 } from '../services/crawlerService';
 import { generateGPTReply } from '../services/chatgptService';
-import puppeteer from 'puppeteer'; // 필요한 경우 사용
 
 // 크롤링 상태 인터페이스 정의
 interface CrawlingStatus {
