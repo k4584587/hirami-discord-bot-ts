@@ -132,22 +132,12 @@ model CrawlingSite {
 }
 
 model CrawlingData {
-  id               BigInt       @id @default(autoincrement())
-  crawlingSiteId   Int
-  postId           String?      @db.VarChar(255)
-  title            String?      @db.VarChar(255)
-  content          String?      @db.Text
-  link             String?      @db.VarChar(255)
-  author           String?      @db.VarChar(255)
-  date             String?      @db.VarChar(255)
-  views            Int?
-  comments         Int?
-  likes            Int?
-  isSent           Boolean      @default(false)
-  discordChannelId String?      @db.VarChar(255)
-  createdAt        DateTime     @default(now()) @db.Timestamp()
-  updatedAt        DateTime     @updatedAt @db.Timestamp()
-  crawlingSite     CrawlingSite @relation(fields: [crawlingSiteId], references: [id])
+  id                  BigInt         @id @default(autoincrement())
+  crawlingSiteId      Int
+  crawlingSiteData    Json           @map("CRAWLING_SITE_DATA")
+  createdAt           DateTime       @default(now()) @db.Timestamp()
+  updatedAt           DateTime       @updatedAt @db.Timestamp()
+  crawlingSite        CrawlingSite   @relation(fields: [crawlingSiteId], references: [id])
 
   @@map("nb_crawling_data")
 }

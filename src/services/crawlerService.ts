@@ -101,3 +101,121 @@ export async function updateCrawlingSite(id: number, data: {
     throw new Error('CrawlingSite 업데이트에 실패했습니다.');
   }
 }
+
+interface Post {
+  id: number;
+  category: string;
+  title: string;
+  author: string;
+  date: string;
+  views: number;
+  comments: number;
+  likes: number;
+}
+
+interface CrawlingDataStructure {
+  [key: string]: any;
+  metadata: {
+    [key: string]: any;
+    crawledAt: string;
+    url: string;
+    status: 'success' | 'error';
+    totalPosts: number;
+    lastUpdated: string;
+  };
+  data: {
+    posts: Post[];
+    summary?: {
+      totalViews: number;
+      avgComments: number;
+      mostActiveAuthor: string;
+      categories: { [key: string]: number };
+    };
+  };
+}
+
+export async function saveCrawlingData(crawlingSiteId: number, data: {
+  processedData: any;
+  crawledAt: Date;
+}) {
+  try {
+    const posts = data.processedData.posts || [];
+    
+    // 통계 데이터 계산
+    const totalViews = posts.reduce((sum: number, post: Post) => sum + post.views, 0);
+    const avgComments = posts.reduce((sum: number, post: Post) => sum + post.comments, 0) / posts.length;
+    
+    // 가장 활동적인 작성자 찾기
+    const authorCounts = posts.reduce((acc: {[key: string]: number}, post: Post) => {
+      acc[post.author] = (acc[post.author] || 0) + 1;
+      return acc;
+    }, {});
+    const mostActiveAuthor = Object.entries(authorCounts)
+      .sort((a, b) => (b[1] as number) - (a[1] as number))[0]?.[0] || '';
+
+    // 카테고리별 게시글 수 집계
+    const categories = posts.reduce((acc: {[key: string]: number}, post: Post) => {
+      acc[post.category] = (acc[post.category] || 0) + 1;
+      return acc;
+    }, {});
+
+    const structuredData: CrawlingDataStructure = {
+      metadata: {
+        crawledAt: data.crawledAt.toISOString(),
+        lastUpdated: new Date().toISOString(),
+        status: posts.length > 0 ? 'success' : 'error',
+        url: data.processedData.url || '',
+        totalPosts: posts.length
+      },
+      data: {
+        posts: posts.sort((a: Post, b: Post) => b.id - a.id),
+        summary: {
+          totalViews,
+          avgComments,
+          mostActiveAuthor,
+          categories
+        }
+      }
+    };
+
+    return await prisma.crawlingData.create({
+      data: {
+        crawlingSiteId,
+        crawlingSiteData: structuredData,
+      },
+    });
+  } catch (error) {
+    console.error('saveCrawlingData 서비스 에러:', error);
+    throw new Error('크롤링 데이터 저장에 실패했습니다.');
+  }
+}
+
+export async function getCrawlingData(crawlingSiteId?: number) {
+  try {
+    const data = await prisma.crawlingData.findMany({
+      where: crawlingSiteId ? { crawlingSiteId } : undefined,
+      orderBy: {
+        createdAt: 'desc'
+      },
+      include: {
+        crawlingSite: {
+          select: {
+            name: true,
+            url: true,
+            assistantName: true
+          }
+        }
+      }
+    });
+
+    // BigInt를 문자열로 변환
+    return data.map(item => ({
+      ...item,
+      id: String(item.id),  // BigInt를 string으로 변환
+      crawlingSiteId: Number(item.crawlingSiteId)  // BigInt를 number로 변환
+    }));
+  } catch (error) {
+    console.error('getCrawlingData 서비스 에러:', error);
+    throw new Error('크롤링 데이터 조회에 실패했습니다.');
+  }
+}

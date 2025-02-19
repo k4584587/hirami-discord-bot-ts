@@ -1,14 +1,19 @@
 // src/controllers/crawlerController.ts
 
+import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import {
   createCrawlingSite,
   deleteCrawlingSite,
   fetchContentUsingXPath,
   getCrawlingSites,
-  updateCrawlingSite
+  updateCrawlingSite,
+  saveCrawlingData,
+  getCrawlingData
 } from '../services/crawlerService';
 import { generateGPTReply } from '../services/chatgptService';
+
+const prisma = new PrismaClient();
 
 // 크롤링 상태 인터페이스 정의
 interface CrawlingStatus {
@@ -81,7 +86,24 @@ export async function getContent(req: Request, res: Response) {
     // 'json' 형식일 때 JSON 객체로 응답
     try {
       const jsonResponse = JSON.parse(reply);
-      // GPT 응답 전송
+      
+      // 크롤링 사이트 정보 조회
+      const crawlingSite = await prisma.crawlingSite.findFirst({
+        where: {
+          assistantName: assistantName as string,
+          url: url as string,
+        }
+      });
+
+      if (crawlingSite) {
+        // 크롤링 데이터 저장
+        await saveCrawlingData(crawlingSite.id, {
+          processedData: jsonResponse,
+          crawledAt: new Date(),
+        });
+        console.log(`크롤링 데이터가 저장되었습니다. 사이트 ID: ${crawlingSite.id}`);
+      }
+
       res.write(`data: ${JSON.stringify({
         status: 'gptResponse',
         data: jsonResponse
@@ -197,6 +219,20 @@ export async function updateCrawlingSiteController(req: Request, res: Response) 
     console.log(`크롤링 사이트 업데이트: ID ${id}`);
   } catch (error: any) {
     console.error('updateCrawlingSiteController 에러:', error);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+// CrawlingData 조회
+export async function getCrawlingDataController(req: Request, res: Response) {
+  try {
+    const { siteId } = req.query;
+    const crawlingData = await getCrawlingData(
+      siteId ? parseInt(siteId as string) : undefined
+    );
+    res.json(crawlingData);
+  } catch (error: any) {
+    console.error('getCrawlingDataController 에러:', error);
     res.status(500).json({ error: error.message });
   }
 }

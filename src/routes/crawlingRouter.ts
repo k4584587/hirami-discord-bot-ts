@@ -7,9 +7,13 @@ import {
 	getCrawlingSitesController,
 	getCrawlingStatusController,
 	updateCrawlingSiteController,
+	getCrawlingDataController,
 } from '../controllers/crawlerController';
 
 const router = Router();
+
+
+router.get('/crawling-status', getCrawlingStatusController);
 
 /**
  * @swagger
@@ -69,8 +73,66 @@ const router = Router();
  *                 error:
  *                   type: string
  */
-router.get('/crawling-status', getCrawlingStatusController);
 router.post('/crawl', getContent);
+
+/**
+ * @swagger
+ * /api/crawl:
+ *   get:
+ *     tags:
+ *       - Crawler
+ *     summary: 웹사이트 크롤링
+ *     description: 지정된 URL에서 XPath를 사용하여 콘텐츠를 크롤링하고 GPT 응답을 반환합니다
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *               - xpath
+ *               - assistantName
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 description: 크롤링할 웹사이트 URL
+ *                 example: "https://example.com"
+ *               xpath:
+ *                 type: string
+ *                 description: 추출할 콘텐츠의 XPath
+ *                 example: "//div[@class='content']"
+ *               assistantName:
+ *                 type: string
+ *                 description: GPT 응답 생성에 사용될 어시스턴트 이름
+ *                 example: "assistant"
+ *     responses:
+ *       200:
+ *         description: 크롤링 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               description: GPT가 생성한 JSON 응답
+ *       400:
+ *         description: 잘못된 요청
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: 서버 오류
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.get('/crawl', getContent);
 
 
@@ -224,5 +286,73 @@ router.get('/crawling-sites', getCrawlingSitesController);
  *         description: 서버 오류
  */
 router.delete('/crawling-sites/:id', deleteCrawlingSiteController);
+
+/**
+ * @swagger
+ * /api/crawling-data:
+ *   get:
+ *     tags:
+ *       - CrawlingData
+ *     summary: 크롤링 데이터 조회
+ *     description: 저장된 크롤링 데이터를 조회합니다.
+ *     parameters:
+ *       - in: query
+ *         name: siteId
+ *         schema:
+ *           type: integer
+ *         description: 특정 사이트의 크롤링 데이터만 조회 (선택사항)
+ *     responses:
+ *       200:
+ *         description: 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   crawlingSiteId:
+ *                     type: integer
+ *                   crawlingSiteData:
+ *                     type: object
+ *                     properties:
+ *                       metadata:
+ *                         type: object
+ *                         properties:
+ *                           crawledAt:
+ *                             type: string
+ *                           lastUpdated:
+ *                             type: string
+ *                           status:
+ *                             type: string
+ *                           url:
+ *                             type: string
+ *                           totalPosts:
+ *                             type: integer
+ *                       data:
+ *                         type: object
+ *                         properties:
+ *                           posts:
+ *                             type: array
+ *                           summary:
+ *                             type: object
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                   crawlingSite:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       url:
+ *                         type: string
+ *                       assistantName:
+ *                         type: string
+ *       500:
+ *         description: 서버 오류
+ */
+router.get('/crawling-data', getCrawlingDataController);
 
 export default router;
