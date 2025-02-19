@@ -83,6 +83,9 @@ export async function deleteCrawlingSite(id: number) {
 /**
  * CrawlingSite 업데이트 서비스
  */
+/**
+ * CrawlingSite 업데이트 서비스
+ */
 export async function updateCrawlingSite(id: number, data: {
   name?: string;
   url?: string;
@@ -90,6 +93,7 @@ export async function updateCrawlingSite(id: number, data: {
   assistantName?: string;
   interval?: number;
   isActive?: boolean;
+  lastCrawled?: Date | null;
 }) {
   try {
     return await prisma.crawlingSite.update({
@@ -101,6 +105,7 @@ export async function updateCrawlingSite(id: number, data: {
     throw new Error('CrawlingSite 업데이트에 실패했습니다.');
   }
 }
+
 
 interface Post {
   id: number;
@@ -140,21 +145,27 @@ export async function saveCrawlingData(crawlingSiteId: number, data: {
 }) {
   try {
     const posts = data.processedData.posts || [];
-    
+
+    // 각 게시글에 게시판 주소(boardUrl) 추가
+    const updatedPosts = posts.map((post: Post) => ({
+      ...post,
+      boardUrl: `https://gall.dcinside.com/mgallery/board/view/?id=vr&no=${post.id}`
+    }));
+
     // 통계 데이터 계산
-    const totalViews = posts.reduce((sum: number, post: Post) => sum + post.views, 0);
-    const avgComments = posts.reduce((sum: number, post: Post) => sum + post.comments, 0) / posts.length;
-    
+    const totalViews = updatedPosts.reduce((sum: number, post: Post) => sum + post.views, 0);
+    const avgComments = updatedPosts.reduce((sum: number, post: Post) => sum + post.comments, 0) / updatedPosts.length;
+
     // 가장 활동적인 작성자 찾기
-    const authorCounts = posts.reduce((acc: {[key: string]: number}, post: Post) => {
+    const authorCounts = updatedPosts.reduce((acc: { [key: string]: number }, post: Post) => {
       acc[post.author] = (acc[post.author] || 0) + 1;
       return acc;
     }, {});
     const mostActiveAuthor = Object.entries(authorCounts)
-      .sort((a, b) => (b[1] as number) - (a[1] as number))[0]?.[0] || '';
+    .sort((a, b) => (b[1] as number) - (a[1] as number))[0]?.[0] || '';
 
     // 카테고리별 게시글 수 집계
-    const categories = posts.reduce((acc: {[key: string]: number}, post: Post) => {
+    const categories = updatedPosts.reduce((acc: { [key: string]: number }, post: Post) => {
       acc[post.category] = (acc[post.category] || 0) + 1;
       return acc;
     }, {});
@@ -163,12 +174,12 @@ export async function saveCrawlingData(crawlingSiteId: number, data: {
       metadata: {
         crawledAt: data.crawledAt.toISOString(),
         lastUpdated: new Date().toISOString(),
-        status: posts.length > 0 ? 'success' : 'error',
+        status: updatedPosts.length > 0 ? 'success' : 'error',
         url: data.processedData.url || '',
-        totalPosts: posts.length
+        totalPosts: updatedPosts.length
       },
       data: {
-        posts: posts.sort((a: Post, b: Post) => b.id - a.id),
+        posts: updatedPosts.sort((a: Post, b: Post) => b.id - a.id),
         summary: {
           totalViews,
           avgComments,
@@ -189,6 +200,7 @@ export async function saveCrawlingData(crawlingSiteId: number, data: {
     throw new Error('크롤링 데이터 저장에 실패했습니다.');
   }
 }
+
 
 export async function getCrawlingData(crawlingSiteId?: number) {
   try {

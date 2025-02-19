@@ -86,7 +86,7 @@ export async function getContent(req: Request, res: Response) {
     // 'json' 형식일 때 JSON 객체로 응답
     try {
       const jsonResponse = JSON.parse(reply);
-      
+
       // 크롤링 사이트 정보 조회
       const crawlingSite = await prisma.crawlingSite.findFirst({
         where: {
@@ -102,6 +102,10 @@ export async function getContent(req: Request, res: Response) {
           crawledAt: new Date(),
         });
         console.log(`크롤링 데이터가 저장되었습니다. 사이트 ID: ${crawlingSite.id}`);
+
+        // 마지막 크롤링 시간 업데이트
+        await updateCrawlingSite(crawlingSite.id, { lastCrawled: new Date() });
+        console.log(`크롤링 사이트의 lastCrawled 업데이트: 사이트 ID ${crawlingSite.id}`);
       }
 
       res.write(`data: ${JSON.stringify({
@@ -199,7 +203,8 @@ export async function updateCrawlingSiteController(req: Request, res: Response) 
       xpath,
       assistantName,
       interval,
-      isActive
+      isActive,
+      lastCrawled
     } = req.body;
 
     if (!id) {
@@ -213,6 +218,7 @@ export async function updateCrawlingSiteController(req: Request, res: Response) 
       assistantName,
       interval,
       isActive,
+      lastCrawled: lastCrawled ? new Date(lastCrawled) : undefined,
     });
 
     res.json(updatedCrawlingSite);
@@ -228,7 +234,7 @@ export async function getCrawlingDataController(req: Request, res: Response) {
   try {
     const { siteId } = req.query;
     const crawlingData = await getCrawlingData(
-      siteId ? parseInt(siteId as string) : undefined
+        siteId ? parseInt(siteId as string) : undefined
     );
     res.json(crawlingData);
   } catch (error: any) {
