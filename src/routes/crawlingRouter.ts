@@ -13,6 +13,41 @@ import {
 const router = Router();
 
 
+/**
+ * @swagger
+ * /api/crawling-status:
+ *   get:
+ *     tags:
+ *       - Crawler
+ *     summary: 크롤링 상태 조회
+ *     description: 현재 크롤링 상태를 조회합니다.
+ *     responses:
+ *       200:
+ *         description: 현재 크롤링 상태 객체 반환
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               additionalProperties:
+ *                 type: object
+ *                 properties:
+ *                   isCrawling:
+ *                     type: boolean
+ *                     description: 크롤링 진행 여부
+ *                   startTime:
+ *                     type: string
+ *                     format: date-time
+ *                     description: 크롤링 시작 시간
+ *       500:
+ *         description: 크롤링 상태 조회 실패
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 router.get('/crawling-status', getCrawlingStatusController);
 
 /**
