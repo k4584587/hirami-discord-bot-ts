@@ -27,17 +27,15 @@ interface CrawlingStatus {
 // 크롤링 상태를 저장할 객체 초기화
 const crawlingStatus: CrawlingStatus = {};
 
-/**
- * 크롤링 작업을 수행하고 SSE를 통해 상태를 클라이언트에 전달하는 컨트롤러
- */
 export async function getContent(req: Request, res: Response) {
   console.log('getContent called');
 
-  const { assistantName, url, xpath } = req.query;
+  // 요청 본문에서 파라미터 추출
+  const { assistantName, url, xpath } = req.body;
 
   // 필수 파라미터 확인
   if (typeof assistantName !== 'string' || typeof url !== 'string' || typeof xpath !== 'string') {
-    res.status(400).json({ error: 'assistantName, url, and xpath are required as query parameters.' });
+    res.status(400).json({ error: 'assistantName, url, and xpath are required as body parameters.' });
     return;
   }
 
@@ -46,89 +44,70 @@ export async function getContent(req: Request, res: Response) {
 
   // 이미 크롤링 중인지 확인
   if (crawlingStatus[siteId] && crawlingStatus[siteId].isCrawling) {
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    });
-    res.write(`data: {"status": "error", "message": "이미 크롤링이 진행 중입니다."}\n\n`);
-    res.end();
+    res.status(400).json({ error: '이미 크롤링이 진행 중입니다.' });
     console.log(`Crawling already in progress for siteId: ${siteId}`);
     return;
   }
 
   // 크롤링 상태 업데이트
   crawlingStatus[siteId] = { isCrawling: true, startTime: new Date() };
-  console.log(`Crawling started for siteId: ${siteId}`);
-
-  // SSE 헤더 설정
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  console.log(`크롤링 시작: ${siteId}`);
 
   try {
-    // 크롤링 시작 메시지 전송
-    res.write(`data: {"status": "crawlingStarted", "message": "크롤링이 시작되었습니다!"}\n\n`);
-    console.log(`Sent 'crawlingStarted' message to client for siteId: ${siteId}`);
-
     // 크롤링 수행
     const content = await fetchContentUsingXPath(url, xpath);
     console.log(`Fetched content for siteId ${siteId}: ${content}`);
-
-    // 크롤링 완료 메시지 전송
-    res.write(`data: {"status": "crawlingCompleted", "message": "크롤링이 완료되었습니다!"}\n\n`);
-    console.log(`Sent 'crawlingCompleted' message to client for siteId: ${siteId}`);
 
     // GPT 응답 생성
     console.log(`Generating GPT reply for assistant: ${assistantName}`);
     const reply = await generateGPTReply(String(2), "api", " " + content + " ", assistantName, "json");
 
-    // 'json' 형식일 때 JSON 객체로 응답
+    // GPT 응답 파싱
+    let jsonResponse;
     try {
-      const jsonResponse = JSON.parse(reply);
-
-      // 크롤링 사이트 정보 조회
-      const crawlingSite = await prisma.crawlingSite.findFirst({
-        where: {
-          assistantName: assistantName as string,
-          url: url as string,
-        }
-      });
-
-      if (crawlingSite) {
-        // 크롤링 데이터 저장
-        await saveCrawlingData(crawlingSite.id, {
-          processedData: jsonResponse,
-          crawledAt: new Date(),
-        });
-        console.log(`크롤링 데이터가 저장되었습니다. 사이트 ID: ${crawlingSite.id}`);
-
-        // 마지막 크롤링 시간 업데이트
-        await updateCrawlingSite(crawlingSite.id, { lastCrawled: new Date() });
-        console.log(`크롤링 사이트의 lastCrawled 업데이트: 사이트 ID ${crawlingSite.id}`);
-      }
-
-      res.write(`data: ${JSON.stringify({
-        status: 'gptResponse',
-        data: jsonResponse
-      })}\n\n`);
-      console.log(`Sent 'gptResponse' message to client for siteId: ${siteId}`);
+      jsonResponse = JSON.parse(reply);
     } catch (parseError) {
       console.error('JSON 파싱 오류:', parseError);
-      res.write(`data: {"status": "error", "message": "GPT 응답을 파싱하는 데 실패했습니다."}\n\n`);
-      console.log(`Sent 'error' message to client for siteId: ${siteId} due to JSON parse error`);
+      res.status(500).json({ error: "GPT 응답을 파싱하는 데 실패했습니다." });
+      return;
     }
+
+    // 크롤링 사이트 정보 조회 및 데이터 저장
+    const crawlingSite = await prisma.crawlingSite.findFirst({
+      where: {
+        assistantName: assistantName,
+        url: url,
+      }
+    });
+
+    if (crawlingSite) {
+      await saveCrawlingData(crawlingSite.id, {
+        processedData: jsonResponse,
+        crawledAt: new Date(),
+      });
+      console.log(`크롤링 데이터가 저장되었습니다. 사이트 ID: ${crawlingSite.id}`);
+
+      await updateCrawlingSite(crawlingSite.id, { lastCrawled: new Date() });
+      console.log(`크롤링 사이트의 lastCrawled 업데이트: 사이트 ID ${crawlingSite.id}`);
+    }
+
+    // 최종 JSON 응답 전송
+    res.status(200).json({
+      status: 'gptResponse',
+      data: jsonResponse
+    });
+    console.log(`Sent final JSON response for siteId: ${siteId}`);
   } catch (error) {
     console.error('getContent 에러:', error);
-    res.write(`data: {"status": "error", "message": "Failed to fetch content."}\n\n`);
-    console.log(`Sent 'error' message to client for siteId: ${siteId} due to fetchContentUsingXPath error`);
+    res.status(500).json({ error: "Failed to fetch content." });
   } finally {
     // 크롤링 상태 업데이트
     crawlingStatus[siteId].isCrawling = false;
-    res.end();
-    console.log(`Crawling 작업 종료: ${siteId}`);
+    console.log(`크롤링 작업 종료: ${siteId}`);
   }
 }
+
+
 
 // 크롤링 상태 조회 컨트롤러
 export async function getCrawlingStatusController(req: Request, res: Response) {

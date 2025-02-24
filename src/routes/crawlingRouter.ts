@@ -1,9 +1,9 @@
 //src/routes/adminRouter.ts
 import { Router } from 'express';
 import {
+	getContent,
 	createCrawlingSiteController,
 	deleteCrawlingSiteController,
-	getContent,
 	getCrawlingSitesController,
 	getCrawlingStatusController,
 	updateCrawlingSiteController,
@@ -11,44 +11,6 @@ import {
 } from '../controllers/crawlerController';
 
 const router = Router();
-
-
-/**
- * @swagger
- * /api/crawling-status:
- *   get:
- *     tags:
- *       - Crawler
- *     summary: 크롤링 상태 조회
- *     description: 현재 크롤링 상태를 조회합니다.
- *     responses:
- *       200:
- *         description: 현재 크롤링 상태 객체 반환
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               additionalProperties:
- *                 type: object
- *                 properties:
- *                   isCrawling:
- *                     type: boolean
- *                     description: 크롤링 진행 여부
- *                   startTime:
- *                     type: string
- *                     format: date-time
- *                     description: 크롤링 시작 시간
- *       500:
- *         description: 크롤링 상태 조회 실패
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- */
-router.get('/crawling-status', getCrawlingStatusController);
 
 /**
  * @swagger
@@ -112,54 +74,31 @@ router.post('/crawl', getContent);
 
 /**
  * @swagger
- * /api/crawl:
+ * /api/crawling-status:
  *   get:
  *     tags:
  *       - Crawler
- *     summary: 웹사이트 크롤링
- *     description: 지정된 URL에서 XPath를 사용하여 콘텐츠를 크롤링하고 GPT 응답을 반환합니다
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - url
- *               - xpath
- *               - assistantName
- *             properties:
- *               url:
- *                 type: string
- *                 description: 크롤링할 웹사이트 URL
- *                 example: "https://example.com"
- *               xpath:
- *                 type: string
- *                 description: 추출할 콘텐츠의 XPath
- *                 example: "//div[@class='content']"
- *               assistantName:
- *                 type: string
- *                 description: GPT 응답 생성에 사용될 어시스턴트 이름
- *                 example: "assistant"
+ *     summary: 크롤링 상태 조회
+ *     description: 현재 크롤링 상태를 조회합니다.
  *     responses:
  *       200:
- *         description: 크롤링 성공
+ *         description: 현재 크롤링 상태 객체 반환
  *         content:
  *           application/json:
  *             schema:
  *               type: object
- *               description: GPT가 생성한 JSON 응답
- *       400:
- *         description: 잘못된 요청
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
+ *               additionalProperties:
+ *                 type: object
+ *                 properties:
+ *                   isCrawling:
+ *                     type: boolean
+ *                     description: 크롤링 진행 여부
+ *                   startTime:
+ *                     type: string
+ *                     format: date-time
+ *                     description: 크롤링 시작 시간
  *       500:
- *         description: 서버 오류
+ *         description: 크롤링 상태 조회 실패
  *         content:
  *           application/json:
  *             schema:
@@ -168,8 +107,7 @@ router.post('/crawl', getContent);
  *                 error:
  *                   type: string
  */
-router.get('/crawl', getContent);
-
+router.get('/crawling-status', getCrawlingStatusController);
 
 /**
  * @swagger
