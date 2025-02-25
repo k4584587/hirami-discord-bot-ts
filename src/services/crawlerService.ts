@@ -83,9 +83,6 @@ export async function deleteCrawlingSite(id: number) {
 /**
  * CrawlingSite 업데이트 서비스
  */
-/**
- * CrawlingSite 업데이트 서비스
- */
 export async function updateCrawlingSite(id: number, data: {
   name?: string;
   url?: string;
