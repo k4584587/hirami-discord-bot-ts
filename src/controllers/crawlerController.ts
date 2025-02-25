@@ -54,13 +54,38 @@ export async function getContent(req: Request, res: Response) {
   console.log(`크롤링 시작: ${siteId}`);
 
   try {
-    // 크롤링 수행
+    // 크롤링 사이트 정보 조회 (nb_crawling_sites 테이블)
+    const crawlingSite = await prisma.crawlingSite.findFirst({
+      where: {
+        assistantName: assistantName,
+        url: url,
+      }
+    });
+
+    // 최근 실행된 크롤링 데이터(nb_crawling_data 테이블) 조회
+    let previousData = "";
+    if (crawlingSite) {
+      const lastCrawlingData = await prisma.crawlingData.findFirst({
+        where: { crawlingSiteId: crawlingSite.id },
+        orderBy: { createdAt: 'desc' }
+      });
+      if (lastCrawlingData) {
+        // BigInt를 문자열로 변환하는 replacer 함수 사용
+        previousData = JSON.stringify(lastCrawlingData, (_, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+        );
+        console.log(`이전 크롤링 데이터: ${previousData}`);
+      }
+    }
+
+    // 실제 웹사이트에서 크롤링 수행
     const content = await fetchContentUsingXPath(url, xpath);
     console.log(`Fetched content for siteId ${siteId}: ${content}`);
 
-    // GPT 응답 생성
+    // GPT 응답 생성 (이전에 조회한 데이터와 새로 크롤링한 데이터를 함께 전송)
     console.log(`Generating GPT reply for assistant: ${assistantName}`);
-    const reply = await generateGPTReply(String(2), "api", " " + content + " ", assistantName, "json");
+    const inputForGPT = `이전 크롤링 데이터: ${previousData}\n새로운 크롤링 데이터: ${content}`;
+    const reply = await generateGPTReply(String(2), "api", inputForGPT, assistantName, "json");
 
     // GPT 응답 파싱
     let jsonResponse;
@@ -72,14 +97,7 @@ export async function getContent(req: Request, res: Response) {
       return;
     }
 
-    // 크롤링 사이트 정보 조회 및 데이터 저장
-    const crawlingSite = await prisma.crawlingSite.findFirst({
-      where: {
-        assistantName: assistantName,
-        url: url,
-      }
-    });
-
+    // 크롤링 데이터 저장 및 크롤링 사이트 정보 업데이트
     if (crawlingSite) {
       await saveCrawlingData(crawlingSite.id, {
         processedData: jsonResponse,
