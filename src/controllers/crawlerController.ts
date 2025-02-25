@@ -228,14 +228,36 @@ export async function updateCrawlingSiteController(req: Request, res: Response) 
 
 // CrawlingData 조회
 export async function getCrawlingDataController(req: Request, res: Response) {
+  const { siteId } = req.query;
+
+  if (!siteId) {
+    res.status(400).json({ error: 'siteId가 필요합니다.' });
+    return;
+  }
+
   try {
-    const { siteId } = req.query;
-    const crawlingData = await getCrawlingData(
-        siteId ? parseInt(siteId as string) : undefined
+    const crawlingData = await prisma.crawlingData.findMany({
+      where: {
+        crawlingSiteId: Number(siteId)
+      },
+      include: {
+        crawlingSite: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // BigInt 값들을 문자열로 변환하여 직렬화 에러 해결
+    const jsonData = JSON.parse(
+        JSON.stringify(crawlingData, (key, value) =>
+            typeof value === 'bigint' ? value.toString() : value
+        )
     );
-    res.json(crawlingData);
-  } catch (error: any) {
-    console.error('getCrawlingDataController 에러:', error);
-    res.status(500).json({ error: error.message });
+
+    res.status(200).json(jsonData);
+  } catch (error) {
+    console.error('크롤링 데이터 조회 에러:', error);
+    res.status(500).json({ error: '크롤링 데이터를 가져오는데 실패했습니다.' });
   }
 }
