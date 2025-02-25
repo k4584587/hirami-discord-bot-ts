@@ -27,77 +27,116 @@ interface CrawlingStatus {
 // 크롤링 상태를 저장할 객체 초기화
 const crawlingStatus: CrawlingStatus = {};
 
+interface Post {
+  id: number;
+  category: string;
+  title: string;
+  author: string;
+  date: string;
+  views: number;
+  comments: number;
+  likes: number;
+}
+
 export async function getContent(req: Request, res: Response) {
   console.log('getContent called');
 
-  // 요청 본문에서 파라미터 추출
   const { assistantName, url, xpath } = req.body;
 
-  // 필수 파라미터 확인
   if (typeof assistantName !== 'string' || typeof url !== 'string' || typeof xpath !== 'string') {
     res.status(400).json({ error: 'assistantName, url, and xpath are required as body parameters.' });
     return;
   }
 
-  // 고유 식별자 생성
   const siteId = `${assistantName}-${url}`;
 
-  // 이미 크롤링 중인지 확인
   if (crawlingStatus[siteId] && crawlingStatus[siteId].isCrawling) {
     res.status(400).json({ error: '이미 크롤링이 진행 중입니다.' });
     console.log(`Crawling already in progress for siteId: ${siteId}`);
     return;
   }
 
-  // 크롤링 상태 업데이트
   crawlingStatus[siteId] = { isCrawling: true, startTime: new Date() };
   console.log(`크롤링 시작: ${siteId}`);
 
   try {
-    // 크롤링 사이트 정보 조회 (nb_crawling_sites 테이블)
+    // 크롤링 사이트 정보 조회
     const crawlingSite = await prisma.crawlingSite.findFirst({
       where: {
         assistantName: assistantName,
         url: url,
-      }
+      },
     });
 
-    // 최근 실행된 크롤링 데이터(nb_crawling_data 테이블) 조회
-    let previousData = "";
+    // 이전 크롤링 데이터 조회
+    let previousData: any = null;
+    let previousPostIds: number[] = [];
     if (crawlingSite) {
       const lastCrawlingData = await prisma.crawlingData.findFirst({
         where: { crawlingSiteId: crawlingSite.id },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
       if (lastCrawlingData) {
-        // BigInt를 문자열로 변환하는 replacer 함수 사용
-        previousData = JSON.stringify(lastCrawlingData, (_, value) =>
-            typeof value === 'bigint' ? value.toString() : value
+        previousData = JSON.parse(
+            JSON.stringify(lastCrawlingData, (_, value) =>
+                typeof value === 'bigint' ? value.toString() : value
+            )
         );
-        console.log(`이전 크롤링 데이터: ${previousData}`);
+        previousPostIds = previousData.crawlingSiteData?.data?.posts?.map((post: Post) => post.id) || [];
       }
     }
 
-    // 실제 웹사이트에서 크롤링 수행
+    // 새 데이터 크롤링
     const content = await fetchContentUsingXPath(url, xpath);
+    if (!content) {
+      if (previousData) {
+        // 새 데이터가 없고 이전 데이터가 있으면 이전 데이터 반환
+        res.status(200).json({
+          status: 'previous_data',
+          data: previousData.crawlingSiteData,
+        });
+        console.log(`No new content, returning previous data for siteId: ${siteId}`);
+        return;
+      }
+      throw new Error('크롤링된 컨텐츠가 없습니다.');
+    }
     console.log(`Fetched content for siteId ${siteId}: ${content}`);
 
-    // GPT 응답 생성 (이전에 조회한 데이터와 새로 크롤링한 데이터를 함께 전송)
-    console.log(`Generating GPT reply for assistant: ${assistantName}`);
-    const inputForGPT = `이전 크롤링 데이터: ${previousData}\n새로운 크롤링 데이터: ${content}`;
-    const reply = await generateGPTReply(String(2), "api", inputForGPT, assistantName, "json");
+    // GPT로 새 데이터를 JSON으로 파싱
+    const initialReply = await generateGPTReply(String(2), "api", content, assistantName, "json");
+    const parsedContent = JSON.parse(initialReply);
+    const allPosts: Post[] = parsedContent.posts || [];
 
-    // GPT 응답 파싱
+    // 새로운 게시글만 필터링
+    const newPosts = allPosts.filter((post: Post) => !previousPostIds.includes(post.id));
+    console.log(`새로운 게시글 수: ${newPosts.length}`);
+
     let jsonResponse;
-    try {
-      jsonResponse = JSON.parse(reply);
-    } catch (parseError) {
-      console.error('JSON 파싱 오류:', parseError);
-      res.status(500).json({ error: "GPT 응답을 파싱하는 데 실패했습니다." });
+
+    if (newPosts.length === 0) {
+      // 새로운 게시글이 없으면 이전 데이터 반환 또는 빈 응답
+      if (previousData) {
+        res.status(200).json({
+          status: 'previous_data',
+          data: previousData.crawlingSiteData,
+        });
+        console.log(`No new posts, returning previous data for siteId: ${siteId}`);
+      } else {
+        res.status(200).json({
+          status: 'no_new_data',
+          data: [],
+        });
+        console.log(`No new posts and no previous data for siteId: ${siteId}`);
+      }
       return;
     }
 
-    // 크롤링 데이터 저장 및 크롤링 사이트 정보 업데이트
+    // 새로운 게시글만 처리
+    jsonResponse = {
+      posts: newPosts,
+    };
+
+    // 데이터 저장 및 업데이트
     if (crawlingSite) {
       await saveCrawlingData(crawlingSite.id, {
         processedData: jsonResponse,
@@ -109,23 +148,19 @@ export async function getContent(req: Request, res: Response) {
       console.log(`크롤링 사이트의 lastCrawled 업데이트: 사이트 ID ${crawlingSite.id}`);
     }
 
-    // 최종 JSON 응답 전송
     res.status(200).json({
       status: 'gptResponse',
-      data: jsonResponse
+      data: jsonResponse,
     });
     console.log(`Sent final JSON response for siteId: ${siteId}`);
   } catch (error) {
     console.error('getContent 에러:', error);
-    res.status(500).json({ error: "Failed to fetch content." });
+    res.status(500).json({ error: 'Failed to fetch content.' });
   } finally {
-    // 크롤링 상태 업데이트
     crawlingStatus[siteId].isCrawling = false;
     console.log(`크롤링 작업 종료: ${siteId}`);
   }
 }
-
-
 
 // 크롤링 상태 조회 컨트롤러
 export async function getCrawlingStatusController(req: Request, res: Response) {
