@@ -1,4 +1,3 @@
-//src/routes/adminRouter.ts
 import { Router } from 'express';
 import {
 	getContent,
@@ -7,7 +6,7 @@ import {
 	getCrawlingSitesController,
 	getCrawlingStatusController,
 	updateCrawlingSiteController,
-	getCrawlingDataController,
+	getCrawlingDataController
 } from '../controllers/crawlerController';
 
 const router = Router();
@@ -181,9 +180,8 @@ router.get('/crawling-status', getCrawlingStatusController);
  *                 error:
  *                   type: string
  */
- // @ts-ignore
+// @ts-ignore
 router.put('/crawling-sites/:id', updateCrawlingSiteController);
-
 
 /**
  * @swagger
@@ -219,7 +217,6 @@ router.put('/crawling-sites/:id', updateCrawlingSiteController);
  *         description: 서버 오류
  */
 router.post('/crawling-sites', createCrawlingSiteController);
-
 
 /**
  * @swagger
@@ -327,5 +324,6 @@ router.delete('/crawling-sites/:id', deleteCrawlingSiteController);
  *         description: 서버 오류
  */
 router.get('/crawling-data', getCrawlingDataController);
+
 
 export default router;

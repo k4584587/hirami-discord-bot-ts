@@ -8,6 +8,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import cors from 'cors';
 import adminRoutes from "./routes/adminRouter";
 import crawlingRouter from "./routes/crawlingRouter";
+import { executeScheduledCrawling } from './controllers/scheduleCrawlingController';
 
 dotenv.config();
 
@@ -81,6 +82,29 @@ async function startBot() {
   }
 }
 
+// 스케줄링 작업을 위한 더미 req, res 객체 정의
+const dummyReq = {} as Request;
+const dummyRes = {
+  status: (code: number) => ({
+    json: (data: any) => {
+      console.log(`스케줄러 응답 [${code}]:`, data);
+    },
+  }),
+} as Response;
+
+// 주기적으로 scheduleCrawlingController를 호출하는 함수
+function startCrawlingScheduler() {
+  const intervalMs = 60 * 1000; // 1분마다 실행
+  setInterval(async () => {
+    console.log('스케줄러 실행 시작');
+    try {
+      await executeScheduledCrawling(dummyReq, dummyRes);
+    } catch (error) {
+      console.error('스케줄링 작업 실행 중 에러 발생:', error);
+    }
+  }, intervalMs);
+}
+
 // Express 서버와 Discord 봇 함께 시작
 async function startServer() {
   try {
@@ -91,6 +115,9 @@ async function startServer() {
 
     // Discord 봇 시작
     await startBot();
+
+    // 스케줄러 시작 (서버 시작 후 주기적으로 크롤링 작업 실행)
+    startCrawlingScheduler();
   } catch (error) {
     console.error('Error starting server:', error);
     process.exit(1);

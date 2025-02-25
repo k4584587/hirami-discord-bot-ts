@@ -1,5 +1,3 @@
-// src/controllers/crawlerController.ts
-
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import {
@@ -12,6 +10,7 @@ import {
   getCrawlingData
 } from '../services/crawlerService';
 import { generateGPTReply } from '../services/chatgptService';
+
 
 const prisma = new PrismaClient();
 
