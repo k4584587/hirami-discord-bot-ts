@@ -282,14 +282,22 @@ export async function getCrawlingDataController(req: Request, res: Response) {
       },
     });
 
-    // id 값이 중복된 데이터 제거
-    const uniqueCrawlingData = crawlingData.filter((item, index, self) =>
-        index === self.findIndex(i => i.id === item.id)
-    );
+    // 중복된 id 처리: 동일한 id가 여러번 등장하면 id에 index 값을 붙여 고유하게 만듭니다.
+    const idCount: Record<string, number> = {};
+    const processedData = crawlingData.map(item => {
+      const idStr = item.id.toString();
+      if (idCount[idStr] !== undefined) {
+        idCount[idStr] += 1;
+        return { ...item, id: `${idStr}_${idCount[idStr]}` };
+      } else {
+        idCount[idStr] = 0;
+        return item;
+      }
+    });
 
     // BigInt 값들을 문자열로 변환하여 직렬화 에러 해결
     const jsonData = JSON.parse(
-        JSON.stringify(uniqueCrawlingData, (key, value) =>
+        JSON.stringify(processedData, (key, value) =>
             typeof value === 'bigint' ? value.toString() : value
         )
     );
@@ -300,3 +308,4 @@ export async function getCrawlingDataController(req: Request, res: Response) {
     res.status(500).json({ error: '크롤링 데이터를 가져오는데 실패했습니다.' });
   }
 }
+
