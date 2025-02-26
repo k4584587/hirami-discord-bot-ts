@@ -282,9 +282,14 @@ export async function getCrawlingDataController(req: Request, res: Response) {
       },
     });
 
+    // id 값이 중복된 데이터 제거
+    const uniqueCrawlingData = crawlingData.filter((item, index, self) =>
+        index === self.findIndex(i => i.id === item.id)
+    );
+
     // BigInt 값들을 문자열로 변환하여 직렬화 에러 해결
     const jsonData = JSON.parse(
-        JSON.stringify(crawlingData, (key, value) =>
+        JSON.stringify(uniqueCrawlingData, (key, value) =>
             typeof value === 'bigint' ? value.toString() : value
         )
     );
